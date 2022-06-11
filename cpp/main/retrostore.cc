@@ -4,9 +4,9 @@
 
 #include <string>
 
-// #include "rs_proto_api.pb.h"
-// #include "pb_decode.h"
-// #include "pb_encode.h"
+#include "proto/ApiProtos.pb.h"
+#include "proto/pb_decode.h"
+#include "proto/pb_encode.h"
 
 namespace retrostore {
 

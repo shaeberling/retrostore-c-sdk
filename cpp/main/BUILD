@@ -14,7 +14,8 @@ cc_library(
   hdrs = [ "retrostore.h" ],
   deps = [
            ":data-fetcher",
-           "//main/proto:api-protos"
+           "//main/proto:api-protos",
+           "@libcurl"
          ],
 )
 
