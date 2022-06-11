@@ -12,7 +12,10 @@ cc_library(
   name = "retrostore",
   srcs = [ "retrostore.cc" ],
   hdrs = [ "retrostore.h" ],
-  deps = [ ":data-fetcher" ],
+  deps = [
+           ":data-fetcher",
+           "//main/proto:api-protos"
+         ],
 )
 
 cc_binary(
