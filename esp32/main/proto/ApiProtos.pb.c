@@ -36,6 +36,24 @@ PB_BIND(SystemState_Registers, SystemState_Registers, AUTO)
 PB_BIND(SystemState_MemoryRegion, SystemState_MemoryRegion, AUTO)
 
 
+PB_BIND(FetchMediaImagesParams, FetchMediaImagesParams, AUTO)
+
+
+PB_BIND(GetAppParams, GetAppParams, AUTO)
+
+
+PB_BIND(ListAppsParams, ListAppsParams, AUTO)
+
+
+PB_BIND(ListAppsParams_Trs80Params, ListAppsParams_Trs80Params, AUTO)
+
+
+PB_BIND(UploadSystemStateParams, UploadSystemStateParams, AUTO)
+
+
+PB_BIND(DownloadSystemStateParams, DownloadSystemStateParams, AUTO)
+
+
 
 
 

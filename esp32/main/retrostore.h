@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include "data-fetcher.h"
+#include "data-fetcher-esp.h"
 
 namespace retrostore {
 
@@ -14,7 +14,7 @@ class RetroStore
     // Construct with default settings such as server.
     explicit RetroStore();
     // Use custom fetcher, will transfer ownrship of the object.
-    RetroStore(DataFetcher* data_fetcher);
+    RetroStore(DataFetcherEsp* data_fetcher);
     // Print version of the library.
     void PrintVersion();
     // Fetch metadata of retrostore apps from catalog.
@@ -24,9 +24,9 @@ class RetroStore
     // Upload system state
     // int UploadState(const SystemState& state);
     // Download system state
-    // SystemState* downloadState(int token);
+    void downloadState(int token);
   private:
-    const DataFetcher* data_fetcher_;
+    const DataFetcherEsp* data_fetcher_;
 };
 
 }  // namespace retrostore

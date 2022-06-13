@@ -3,49 +3,73 @@
 
 #ifndef PB_APIPROTOS_PB_H_INCLUDED
 #define PB_APIPROTOS_PB_H_INCLUDED
-#include "pb.h"
+#include <pb.h>
 
 #if PB_PROTO_HEADER_VERSION != 40
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
 /* Enum definitions */
-typedef enum _Trs80Model {
-    Trs80Model_UNKNOWN_MODEL = 0,
-    Trs80Model_MODEL_I = 1,
-    Trs80Model_MODEL_III = 2,
-    Trs80Model_MODEL_4 = 3,
-    Trs80Model_MODEL_4P = 4
+typedef enum _Trs80Model { 
+    Trs80Model_UNKNOWN_MODEL = 0, 
+    Trs80Model_MODEL_I = 1, 
+    Trs80Model_MODEL_III = 2, 
+    Trs80Model_MODEL_4 = 3, 
+    Trs80Model_MODEL_4P = 4 
 } Trs80Model;
 
-typedef enum _MediaType {
-    MediaType_UNKNOWN = 0,
-    MediaType_DISK = 1,
-    MediaType_CASSETTE = 2,
-    MediaType_COMMAND = 3,
-    MediaType_BASIC = 4
+typedef enum _MediaType { 
+    MediaType_UNKNOWN = 0, 
+    MediaType_DISK = 1, 
+    MediaType_CASSETTE = 2, 
+    MediaType_COMMAND = 3, 
+    MediaType_BASIC = 4 
 } MediaType;
 
 /* Struct definitions */
-typedef struct _ApiResponseApps {
+typedef struct _FetchMediaImagesParams { 
+    pb_callback_t app_id;
+} FetchMediaImagesParams;
+
+typedef struct _GetAppParams { 
+    pb_callback_t app_id;
+} GetAppParams;
+
+typedef struct _ListAppsParams_Trs80Params { 
+    pb_callback_t media_types;
+} ListAppsParams_Trs80Params;
+
+typedef struct _ApiResponseApps { 
     bool success;
     pb_callback_t message;
     pb_callback_t app;
 } ApiResponseApps;
 
-typedef struct _ApiResponseMediaImages {
+typedef struct _ApiResponseMediaImages { 
     bool success;
     pb_callback_t message;
     pb_callback_t mediaImage;
 } ApiResponseMediaImages;
 
-typedef struct _ApiResponseUploadSystemState {
+typedef struct _ApiResponseUploadSystemState { 
     bool success;
     pb_callback_t message;
     int64_t token;
 } ApiResponseUploadSystemState;
 
-typedef struct _MediaImage {
+typedef struct _DownloadSystemStateParams { 
+    int64_t token;
+} DownloadSystemStateParams;
+
+typedef struct _ListAppsParams { 
+    int32_t start;
+    int32_t num;
+    pb_callback_t query;
+    bool has_trs80;
+    ListAppsParams_Trs80Params trs80;
+} ListAppsParams;
+
+typedef struct _MediaImage { 
     MediaType type;
     pb_callback_t filename;
     pb_callback_t data;
@@ -53,12 +77,12 @@ typedef struct _MediaImage {
     pb_callback_t description;
 } MediaImage;
 
-typedef struct _SystemState_MemoryRegion {
+typedef struct _SystemState_MemoryRegion { 
     int32_t start;
     pb_callback_t data;
 } SystemState_MemoryRegion;
 
-typedef struct _SystemState_Registers {
+typedef struct _SystemState_Registers { 
     int32_t ix;
     int32_t iy;
     int32_t pc;
@@ -76,11 +100,11 @@ typedef struct _SystemState_Registers {
     int32_t r_2;
 } SystemState_Registers;
 
-typedef struct _Trs80Extension {
+typedef struct _Trs80Extension { 
     Trs80Model model;
 } Trs80Extension;
 
-typedef struct _App {
+typedef struct _App { 
     pb_callback_t id;
     pb_callback_t name;
     pb_callback_t version;
@@ -92,19 +116,24 @@ typedef struct _App {
     Trs80Extension ext_trs80;
 } App;
 
-typedef struct _SystemState {
+typedef struct _SystemState { 
     Trs80Model model;
     bool has_registers;
     SystemState_Registers registers;
     pb_callback_t memoryRegions;
 } SystemState;
 
-typedef struct _ApiResponseDownloadSystemState {
+typedef struct _ApiResponseDownloadSystemState { 
     bool success;
     pb_callback_t message;
     bool has_systemState;
     SystemState systemState;
 } ApiResponseDownloadSystemState;
+
+typedef struct _UploadSystemStateParams { 
+    bool has_state;
+    SystemState state;
+} UploadSystemStateParams;
 
 
 /* Helper constants for enums */
@@ -132,6 +161,12 @@ extern "C" {
 #define SystemState_init_default                 {_Trs80Model_MIN, false, SystemState_Registers_init_default, {{NULL}, NULL}}
 #define SystemState_Registers_init_default       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define SystemState_MemoryRegion_init_default    {0, {{NULL}, NULL}}
+#define FetchMediaImagesParams_init_default      {{{NULL}, NULL}}
+#define GetAppParams_init_default                {{{NULL}, NULL}}
+#define ListAppsParams_init_default              {0, 0, {{NULL}, NULL}, false, ListAppsParams_Trs80Params_init_default}
+#define ListAppsParams_Trs80Params_init_default  {{{NULL}, NULL}}
+#define UploadSystemStateParams_init_default     {false, SystemState_init_default}
+#define DownloadSystemStateParams_init_default   {0}
 #define ApiResponseApps_init_zero                {0, {{NULL}, NULL}, {{NULL}, NULL}}
 #define ApiResponseMediaImages_init_zero         {0, {{NULL}, NULL}, {{NULL}, NULL}}
 #define ApiResponseDownloadSystemState_init_zero {0, {{NULL}, NULL}, false, SystemState_init_zero}
@@ -142,8 +177,17 @@ extern "C" {
 #define SystemState_init_zero                    {_Trs80Model_MIN, false, SystemState_Registers_init_zero, {{NULL}, NULL}}
 #define SystemState_Registers_init_zero          {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define SystemState_MemoryRegion_init_zero       {0, {{NULL}, NULL}}
+#define FetchMediaImagesParams_init_zero         {{{NULL}, NULL}}
+#define GetAppParams_init_zero                   {{{NULL}, NULL}}
+#define ListAppsParams_init_zero                 {0, 0, {{NULL}, NULL}, false, ListAppsParams_Trs80Params_init_zero}
+#define ListAppsParams_Trs80Params_init_zero     {{{NULL}, NULL}}
+#define UploadSystemStateParams_init_zero        {false, SystemState_init_zero}
+#define DownloadSystemStateParams_init_zero      {0}
 
 /* Field tags (for use in manual encoding/decoding) */
+#define FetchMediaImagesParams_app_id_tag        1
+#define GetAppParams_app_id_tag                  1
+#define ListAppsParams_Trs80Params_media_types_tag 1
 #define ApiResponseApps_success_tag              1
 #define ApiResponseApps_message_tag              2
 #define ApiResponseApps_app_tag                  3
@@ -153,6 +197,11 @@ extern "C" {
 #define ApiResponseUploadSystemState_success_tag 1
 #define ApiResponseUploadSystemState_message_tag 2
 #define ApiResponseUploadSystemState_token_tag   3
+#define DownloadSystemStateParams_token_tag      1
+#define ListAppsParams_start_tag                 1
+#define ListAppsParams_num_tag                   2
+#define ListAppsParams_query_tag                 3
+#define ListAppsParams_trs80_tag                 4
 #define MediaImage_type_tag                      1
 #define MediaImage_filename_tag                  2
 #define MediaImage_data_tag                      3
@@ -190,6 +239,7 @@ extern "C" {
 #define ApiResponseDownloadSystemState_success_tag 1
 #define ApiResponseDownloadSystemState_message_tag 2
 #define ApiResponseDownloadSystemState_systemState_tag 3
+#define UploadSystemStateParams_state_tag        1
 
 /* Struct field encoding specification for nanopb */
 #define ApiResponseApps_FIELDLIST(X, a) \
@@ -284,6 +334,41 @@ X(a, CALLBACK, SINGULAR, BYTES,    data,              2)
 #define SystemState_MemoryRegion_CALLBACK pb_default_field_callback
 #define SystemState_MemoryRegion_DEFAULT NULL
 
+#define FetchMediaImagesParams_FIELDLIST(X, a) \
+X(a, CALLBACK, SINGULAR, STRING,   app_id,            1)
+#define FetchMediaImagesParams_CALLBACK pb_default_field_callback
+#define FetchMediaImagesParams_DEFAULT NULL
+
+#define GetAppParams_FIELDLIST(X, a) \
+X(a, CALLBACK, SINGULAR, STRING,   app_id,            1)
+#define GetAppParams_CALLBACK pb_default_field_callback
+#define GetAppParams_DEFAULT NULL
+
+#define ListAppsParams_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, INT32,    start,             1) \
+X(a, STATIC,   SINGULAR, INT32,    num,               2) \
+X(a, CALLBACK, SINGULAR, STRING,   query,             3) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  trs80,             4)
+#define ListAppsParams_CALLBACK pb_default_field_callback
+#define ListAppsParams_DEFAULT NULL
+#define ListAppsParams_trs80_MSGTYPE ListAppsParams_Trs80Params
+
+#define ListAppsParams_Trs80Params_FIELDLIST(X, a) \
+X(a, CALLBACK, REPEATED, UENUM,    media_types,       1)
+#define ListAppsParams_Trs80Params_CALLBACK pb_default_field_callback
+#define ListAppsParams_Trs80Params_DEFAULT NULL
+
+#define UploadSystemStateParams_FIELDLIST(X, a) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  state,             1)
+#define UploadSystemStateParams_CALLBACK NULL
+#define UploadSystemStateParams_DEFAULT NULL
+#define UploadSystemStateParams_state_MSGTYPE SystemState
+
+#define DownloadSystemStateParams_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, INT64,    token,             1)
+#define DownloadSystemStateParams_CALLBACK NULL
+#define DownloadSystemStateParams_DEFAULT NULL
+
 extern const pb_msgdesc_t ApiResponseApps_msg;
 extern const pb_msgdesc_t ApiResponseMediaImages_msg;
 extern const pb_msgdesc_t ApiResponseDownloadSystemState_msg;
@@ -294,6 +379,12 @@ extern const pb_msgdesc_t MediaImage_msg;
 extern const pb_msgdesc_t SystemState_msg;
 extern const pb_msgdesc_t SystemState_Registers_msg;
 extern const pb_msgdesc_t SystemState_MemoryRegion_msg;
+extern const pb_msgdesc_t FetchMediaImagesParams_msg;
+extern const pb_msgdesc_t GetAppParams_msg;
+extern const pb_msgdesc_t ListAppsParams_msg;
+extern const pb_msgdesc_t ListAppsParams_Trs80Params_msg;
+extern const pb_msgdesc_t UploadSystemStateParams_msg;
+extern const pb_msgdesc_t DownloadSystemStateParams_msg;
 
 /* Defines for backwards compatibility with code written before nanopb-0.4.0 */
 #define ApiResponseApps_fields &ApiResponseApps_msg
@@ -306,6 +397,12 @@ extern const pb_msgdesc_t SystemState_MemoryRegion_msg;
 #define SystemState_fields &SystemState_msg
 #define SystemState_Registers_fields &SystemState_Registers_msg
 #define SystemState_MemoryRegion_fields &SystemState_MemoryRegion_msg
+#define FetchMediaImagesParams_fields &FetchMediaImagesParams_msg
+#define GetAppParams_fields &GetAppParams_msg
+#define ListAppsParams_fields &ListAppsParams_msg
+#define ListAppsParams_Trs80Params_fields &ListAppsParams_Trs80Params_msg
+#define UploadSystemStateParams_fields &UploadSystemStateParams_msg
+#define DownloadSystemStateParams_fields &DownloadSystemStateParams_msg
 
 /* Maximum encoded size of messages (where known) */
 /* ApiResponseApps_size depends on runtime parameters */
@@ -316,6 +413,12 @@ extern const pb_msgdesc_t SystemState_MemoryRegion_msg;
 /* MediaImage_size depends on runtime parameters */
 /* SystemState_size depends on runtime parameters */
 /* SystemState_MemoryRegion_size depends on runtime parameters */
+/* FetchMediaImagesParams_size depends on runtime parameters */
+/* GetAppParams_size depends on runtime parameters */
+/* ListAppsParams_size depends on runtime parameters */
+/* ListAppsParams_Trs80Params_size depends on runtime parameters */
+/* UploadSystemStateParams_size depends on runtime parameters */
+#define DownloadSystemStateParams_size           11
 #define SystemState_Registers_size               165
 #define Trs80Extension_size                      2
 

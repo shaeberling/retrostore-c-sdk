@@ -1,6 +1,7 @@
 idf_component_register(SRCS "retrostore_test_main.cpp"
                             "data-fetcher-esp.cpp"
                             "retrostore.cpp"
+                            "wifi.cpp"
 
                             "proto/pb_common.c"
                             "proto/pb_decode.c"

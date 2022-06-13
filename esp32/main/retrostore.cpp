@@ -6,6 +6,7 @@
 
 #include "esp_log.h"
 
+#include "common.h"
 #include "proto/ApiProtos.pb.h"
 #include "proto/pb_decode.h"
 #include "proto/pb_encode.h"
@@ -21,6 +22,8 @@ using std::string;
 namespace {
 // TODO: Secure, HTTPS(443). Use WiFiClientSecure.
 const int DEFAULT_PORT = 80;
+const string PATH_UPLOAD_STATE = "/api/uploadState";
+const string PATH_DOWNLOAD_STATE = "/api/downloadState";
 const string PATH_FETCH_APPS = "/api/listApps";
 const string PATH_FETCH_MEDIA_IMAGES = "/api/fetchMediaImages";
 }
@@ -53,10 +56,10 @@ const string PATH_FETCH_MEDIA_IMAGES = "/api/fetchMediaImages";
 // }  // namespace
 
 RetroStore::RetroStore()
-    : data_fetcher_(new DataFetcherEsp()) {
+    : data_fetcher_(new DataFetcherEsp("retrostore.org")) {
 }
 
-RetroStore::RetroStore(DataFetcher* data_fetcher)
+RetroStore::RetroStore(DataFetcherEsp* data_fetcher)
     : data_fetcher_(data_fetcher) {
 }
 
@@ -65,13 +68,43 @@ void RetroStore::PrintVersion() {
 }
 
 bool RetroStore::FetchApps(int start, int num) {
+  ListAppsParams params;
   // Serial.println("FetchApps())");
   // data_fetcher_->Fetch(PATH_FETCH_APPS);
   return true;
 }
 
 void RetroStore::FetchMediaImages(const string& appId) {
+  FetchMediaImagesParams params;
+  // params.app_id = appId;
   // Serial.println("FetchMediaImages()");
+}
+
+void RetroStore::downloadState(int token) {
+  // Create buffer for params.
+  RsData buffer(128);
+  pb_ostream_t stream = pb_ostream_from_buffer(buffer.data, sizeof(buffer.len));
+
+  // Create params object and set token.
+  DownloadSystemStateParams params = DownloadSystemStateParams_init_zero;
+  params.token = token;
+
+  // Encode the object to the buffer stream above.
+  bool status = pb_encode(&stream, DownloadSystemStateParams_fields, &params);
+  if (!status) {
+      ESP_LOGE(TAG, "Encoding failed: %s", PB_GET_ERROR(&stream));
+  }
+  buffer.len = stream.bytes_written;
+  ESP_LOGI(TAG, "DownloadSystemStateParams created. Size: %d", buffer.len);
+
+  RsData recv_buffer;
+  data_fetcher_->Fetch(PATH_DOWNLOAD_STATE, buffer, &recv_buffer);
+
+  ESP_LOGI(TAG, "Received %d bytes response.", recv_buffer.len);
+
+  ApiResponseDownloadSystemState state = ApiResponseDownloadSystemState_init_zero;
+  // TODO: Parse the result.
+
 }
 
 }  // namespace retrostore
