@@ -112,7 +112,7 @@ void RetroStore::downloadState(int token) {
   ESP_LOGI(TAG, "DownloadSystemState response decoded successfully.");
 
   if (!state.success) {
-    ESP_LOGW(TAG, "Server responded: Request not successful");
+    ESP_LOGW(TAG, "Bad request. Server responded: %s", state.message);
     return;
   }
   if (!state.has_systemState) {

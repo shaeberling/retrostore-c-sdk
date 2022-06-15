@@ -18,13 +18,13 @@ PB_BIND(ApiResponseDownloadSystemState, ApiResponseDownloadSystemState, AUTO)
 PB_BIND(ApiResponseUploadSystemState, ApiResponseUploadSystemState, AUTO)
 
 
-PB_BIND(App, App, AUTO)
+PB_BIND(App, App, 2)
 
 
 PB_BIND(Trs80Extension, Trs80Extension, AUTO)
 
 
-PB_BIND(MediaImage, MediaImage, AUTO)
+PB_BIND(MediaImage, MediaImage, 2)
 
 
 PB_BIND(SystemState, SystemState, AUTO)
