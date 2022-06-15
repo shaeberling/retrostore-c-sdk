@@ -43,7 +43,7 @@ void initWifi() {
 
 
   auto* wifi = new Wifi();
-  wifi->connect("s13g", "***REMOVED***");  // FIXME
+  wifi->connect("SSID", "PASSWORD");  // FIXME
 
 
 }
