@@ -120,7 +120,6 @@ void RetroStore::downloadState(int token) {
     return;
   }
 
-
   auto& state = stateResp.systemState;
   ESP_LOGI(TAG, "System State:==============");
   ESP_LOGI(TAG, " |> Model  : %d", state.model);
@@ -143,10 +142,10 @@ void RetroStore::downloadState(int token) {
 
   // Load the memoriy regions, which are dynamic and potentially large in size.
   for (int i = 0; i < state.memoryRegions_count; ++i) {
-    ESP_LOGI(TAG, " |> Region[%d] start [%d]:", i, state.memoryRegions[i].start);
+    ESP_LOGI(TAG, " |> Region[%d] start  [%d]:", i, state.memoryRegions[i].start);
+    ESP_LOGI(TAG, " |> Region[%d] length [%d]:", i, state.memoryRegions[i].length);
+    // TODO: Read data.
   }
-
-  // TODO: memoryRegions
 }
 
 }  // namespace retrostore

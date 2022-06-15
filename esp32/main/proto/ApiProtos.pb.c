@@ -24,7 +24,7 @@ PB_BIND(App, App, 2)
 PB_BIND(Trs80Extension, Trs80Extension, AUTO)
 
 
-PB_BIND(MediaImage, MediaImage, 2)
+PB_BIND(MediaImage, MediaImage, AUTO)
 
 
 PB_BIND(SystemState, SystemState, 2)

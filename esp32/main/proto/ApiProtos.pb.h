@@ -59,7 +59,7 @@ typedef struct _ListAppsParams {
 
 typedef struct _MediaImage { 
     MediaType type;
-    char filename[128];
+    char filename[30];
     pb_callback_t data;
     int64_t uploadTime;
     char description[128];
@@ -68,6 +68,7 @@ typedef struct _MediaImage {
 typedef struct _SystemState_MemoryRegion { 
     int32_t start;
     pb_callback_t data;
+    int32_t length;
 } SystemState_MemoryRegion;
 
 typedef struct _SystemState_Registers { 
@@ -103,7 +104,7 @@ typedef struct _App {
     char id[40];
     char name[64];
     char version[24];
-    char description[1024];
+    char description[200];
     int32_t release_year;
     pb_callback_t screenshot_url;
     char author[64];
@@ -163,7 +164,7 @@ extern "C" {
 #define MediaImage_init_default                  {_MediaType_MIN, "", {{NULL}, NULL}, 0, ""}
 #define SystemState_init_default                 {_Trs80Model_MIN, false, SystemState_Registers_init_default, 0, {SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default}}
 #define SystemState_Registers_init_default       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-#define SystemState_MemoryRegion_init_default    {0, {{NULL}, NULL}}
+#define SystemState_MemoryRegion_init_default    {0, {{NULL}, NULL}, 0}
 #define FetchMediaImagesParams_init_default      {""}
 #define GetAppParams_init_default                {""}
 #define ListAppsParams_init_default              {0, 0, "", false, ListAppsParams_Trs80Params_init_default}
@@ -179,7 +180,7 @@ extern "C" {
 #define MediaImage_init_zero                     {_MediaType_MIN, "", {{NULL}, NULL}, 0, ""}
 #define SystemState_init_zero                    {_Trs80Model_MIN, false, SystemState_Registers_init_zero, 0, {SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero}}
 #define SystemState_Registers_init_zero          {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-#define SystemState_MemoryRegion_init_zero       {0, {{NULL}, NULL}}
+#define SystemState_MemoryRegion_init_zero       {0, {{NULL}, NULL}, 0}
 #define FetchMediaImagesParams_init_zero         {""}
 #define GetAppParams_init_zero                   {""}
 #define ListAppsParams_init_zero                 {0, 0, "", false, ListAppsParams_Trs80Params_init_zero}
@@ -206,6 +207,7 @@ extern "C" {
 #define MediaImage_description_tag               5
 #define SystemState_MemoryRegion_start_tag       1
 #define SystemState_MemoryRegion_data_tag        2
+#define SystemState_MemoryRegion_length_tag      3
 #define SystemState_Registers_ix_tag             1
 #define SystemState_Registers_iy_tag             2
 #define SystemState_Registers_pc_tag             3
@@ -333,7 +335,8 @@ X(a, STATIC,   SINGULAR, INT32,    r_2,              15)
 
 #define SystemState_MemoryRegion_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, INT32,    start,             1) \
-X(a, CALLBACK, SINGULAR, BYTES,    data,              2)
+X(a, CALLBACK, SINGULAR, BYTES,    data,              2) \
+X(a, STATIC,   SINGULAR, INT32,    length,            3)
 #define SystemState_MemoryRegion_CALLBACK pb_default_field_callback
 #define SystemState_MemoryRegion_DEFAULT NULL
 
