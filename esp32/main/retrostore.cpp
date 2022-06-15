@@ -81,20 +81,20 @@ void RetroStore::FetchMediaImages(const string& appId) {
 }
 
 void RetroStore::downloadState(int token) {
-  // Create buffer for params.
-  RsData buffer(128);
-  pb_ostream_t stream = pb_ostream_from_buffer(buffer.data, sizeof(buffer.len));
-
   // Create params object and set token.
   DownloadSystemStateParams params = DownloadSystemStateParams_init_zero;
   params.token = token;
 
+  // Create buffer for params.
+  RsData buffer(128);
+
+  pb_ostream_t stream_param = pb_ostream_from_buffer(buffer.data, sizeof(buffer.len));
   // Encode the object to the buffer stream above.
-  bool status = pb_encode(&stream, DownloadSystemStateParams_fields, &params);
-  if (!status) {
-      ESP_LOGE(TAG, "Encoding failed: %s", PB_GET_ERROR(&stream));
+  if (!pb_encode(&stream_param, DownloadSystemStateParams_fields, &params)) {
+      ESP_LOGE(TAG, "Encoding failed: %s", PB_GET_ERROR(&stream_param));
+      return;
   }
-  buffer.len = stream.bytes_written;
+  buffer.len = stream_param.bytes_written;
   ESP_LOGI(TAG, "DownloadSystemStateParams created. Size: %d", buffer.len);
 
   RsData recv_buffer;
@@ -103,6 +103,26 @@ void RetroStore::downloadState(int token) {
   ESP_LOGI(TAG, "Received %d bytes response.", recv_buffer.len);
 
   ApiResponseDownloadSystemState state = ApiResponseDownloadSystemState_init_zero;
+  pb_istream_t stream_in = pb_istream_from_buffer(recv_buffer.data, recv_buffer.len);
+
+  if (!pb_decode(&stream_in, ApiResponseDownloadSystemState_fields, &state)) {
+      ESP_LOGE(TAG, "Decoding failed: %s", PB_GET_ERROR(&stream_in));
+      return;
+  }
+  ESP_LOGI(TAG, "DownloadSystemState response decoded successfully.");
+
+  if (!state.success) {
+    ESP_LOGW(TAG, "Server responded: Request not successful");
+    return;
+  }
+  if (!state.has_systemState) {
+    ESP_LOGE(TAG, "Server did not sent a SystemState despite reporting a success.");
+    return;
+  }
+
+  ESP_LOGI(TAG, "TODO: Decode message and SystemState.");
+
+
   // TODO: Parse the result.
 
 }
