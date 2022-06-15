@@ -34,18 +34,13 @@ void testUploadDownloadSystemImage() {
 
   RetroStore rs;
   rs.downloadState(token);
-
 }
 
 
 void initWifi() {
   ESP_LOGI(TAG, "Connecting to Wifi...");
-
-
   auto* wifi = new Wifi();
-  wifi->connect("SSID", "PASSWORD");  // FIXME
-
-
+  wifi->connect(CONFIG_RS_TEST_WIFI_SSID, CONFIG_RS_TEST_WIFI_PASSWORD);
 }
 
 void runAllTests() {
