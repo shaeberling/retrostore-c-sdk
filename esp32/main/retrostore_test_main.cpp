@@ -30,10 +30,12 @@ void testUploadDownloadSystemImage() {
   ESP_LOGI(TAG, "testUploadDownloadSystemImage()...");
   // TODO: Upload a system image for testing ...
   // TODO. Replace this hardcoded token with the one we got from the upload.
-  int token = 696;
+  int token = 727;
 
   RetroStore rs;
-  rs.downloadState(token);
+
+  RsSystemState state;
+  rs.downloadState(token, &state);
 }
 
 

@@ -26,34 +26,24 @@ const string PATH_UPLOAD_STATE = "/api/uploadState";
 const string PATH_DOWNLOAD_STATE = "/api/downloadState";
 const string PATH_FETCH_APPS = "/api/listApps";
 const string PATH_FETCH_MEDIA_IMAGES = "/api/fetchMediaImages";
+
+static bool pb_memory_region_decode_cb(pb_istream_t* stream,
+                                       const pb_field_t* field,
+                                       void** arg) {
+  ESP_LOGI(TAG, ">>>>>>>> Decoding memory region[%d], length: %d", field->field_info_index, stream->bytes_left);
+  pb_byte_t* bytes = static_cast<pb_byte_t*>(malloc(sizeof(pb_byte_t) * stream->bytes_left));
+  pb_read(stream, bytes, stream->bytes_left);
+  RsSystemState* state = static_cast<RsSystemState*>(*arg);
+
+  RsMemoryRegion newRegion;
+  newRegion.data = static_cast<uint8_t*>(bytes);
+  state->regions.push_back(std::move(newRegion));
+
+  ESP_LOGI(TAG, ">>>>>>>> Successfully read memory region into an array.");
+  return true;  // success
 }
 
-// namespace {
-// // Returns the length (in bytes) of the content in this HTTP response.
-// int GetHttpResponseContentLength(uint8_t* http_response) {
-//   // First we need to find the content length which we get in the header.
-//   string buffer_str((const char*)http_response);
-//   string content_length_key = "Content-Length: ";
-//   int start_pos = buffer_str.find(content_length_key) + content_length_key.size();
-//   if (start_pos < 0) {
-//     Serial.println("Cannot find 'Content-Length:' marker.");
-//     return -1;
-//   }
-//   int end_pos = buffer_str.find("\r\n", start_pos);
-//   if (end_pos < 0) {
-//     Serial.println("Cannot find end of content-lenth value.");
-//     return -1;
-//   }
-
-//   if (start_pos >= end_pos) {
-//     Serial.println("start >= end for content-length value range.");
-//     return -1;
-//   }
-//   auto content_length_str = buffer_str.substr(start_pos, end_pos - start_pos);
-//   return atoi(content_length_str.c_str());
-// }
-//
-// }  // namespace
+}
 
 RetroStore::RetroStore()
     : data_fetcher_(new DataFetcherEsp("retrostore.org")) {
@@ -80,7 +70,7 @@ void RetroStore::FetchMediaImages(const string& appId) {
   // Serial.println("FetchMediaImages()");
 }
 
-void RetroStore::downloadState(int token) {
+void RetroStore::downloadState(int token, RsSystemState* state) {
   // Create params object and set token.
   DownloadSystemStateParams params = DownloadSystemStateParams_init_zero;
   params.token = token;
@@ -103,8 +93,13 @@ void RetroStore::downloadState(int token) {
   ESP_LOGI(TAG, "Received %d bytes response.", recv_buffer.len);
 
   ApiResponseDownloadSystemState stateResp = ApiResponseDownloadSystemState_init_zero;
-  pb_istream_t stream_in = pb_istream_from_buffer(recv_buffer.data, recv_buffer.len);
+  auto num_mem_regions = sizeof(stateResp.systemState.memoryRegions)/sizeof(stateResp.systemState.memoryRegions[0]);
+  for (int i = 0; i < num_mem_regions; ++i) {
+    stateResp.systemState.memoryRegions[i].data.funcs.decode = &pb_memory_region_decode_cb;
+    stateResp.systemState.memoryRegions[i].data.arg = state;
+  }
 
+  pb_istream_t stream_in = pb_istream_from_buffer(recv_buffer.data, recv_buffer.len);
   if (!pb_decode(&stream_in, ApiResponseDownloadSystemState_fields, &stateResp)) {
       ESP_LOGE(TAG, "Decoding failed: %s", PB_GET_ERROR(&stream_in));
       return;
@@ -119,32 +114,32 @@ void RetroStore::downloadState(int token) {
     ESP_LOGE(TAG, "Server did not sent a SystemState despite reporting a success.");
     return;
   }
+  auto& _state = stateResp.systemState;
 
-  auto& state = stateResp.systemState;
-  ESP_LOGI(TAG, "System State:==============");
-  ESP_LOGI(TAG, " |> Model  : %d", state.model);
-  ESP_LOGI(TAG, " |> Reg IX : %d", state.registers.ix);
-  ESP_LOGI(TAG, " |> Reg IY : %d", state.registers.iy);
-  ESP_LOGI(TAG, " |> Reg PC : %d", state.registers.pc);
-  ESP_LOGI(TAG, " |> Reg SP : %d", state.registers.sp);
-  ESP_LOGI(TAG, " |> Reg AF : %d", state.registers.af);
-  ESP_LOGI(TAG, " |> Reg BC : %d", state.registers.bc);
-  ESP_LOGI(TAG, " |> Reg DE : %d", state.registers.de);
-  ESP_LOGI(TAG, " |> Reg HL : %d", state.registers.hl);
-  ESP_LOGI(TAG, " |> Reg AFp: %d", state.registers.af_prime);
-  ESP_LOGI(TAG, " |> Reg BCp: %d", state.registers.bc_prime);
-  ESP_LOGI(TAG, " |> Reg DEp: %d", state.registers.de_prime);
-  ESP_LOGI(TAG, " |> Reg HLp: %d", state.registers.hl_prime);
-  ESP_LOGI(TAG, " |> Reg I  : %d", state.registers.i);
-  ESP_LOGI(TAG, " |> Reg R1 : %d", state.registers.r_1);
-  ESP_LOGI(TAG, " |> Reg R2 : %d", state.registers.r_2);
-  ESP_LOGI(TAG, " |> Memory Regions [%d]:", state.memoryRegions_count);
+  // Copy registers
+  state->registers.ix = _state.registers.ix;
+  state->registers.iy = _state.registers.iy;
+  state->registers.pc = _state.registers.pc;
+  state->registers.sp = _state.registers.sp;
+  state->registers.af = _state.registers.af;
+  state->registers.bc = _state.registers.bc;
+  state->registers.de = _state.registers.de;
+  state->registers.hl = _state.registers.hl;
+  state->registers.af_prime = _state.registers.af_prime;
+  state->registers.bc_prime = _state.registers.bc_prime;
+  state->registers.de_prime = _state.registers.de_prime;
+  state->registers.hl_prime = _state.registers.hl_prime;
+  state->registers.i = _state.registers.i;
+  state->registers.r_1 = _state.registers.r_1;
+  state->registers.r_2 = _state.registers.r_2;
 
   // Load the memoriy regions, which are dynamic and potentially large in size.
-  for (int i = 0; i < state.memoryRegions_count; ++i) {
-    ESP_LOGI(TAG, " |> Region[%d] start  [%d]:", i, state.memoryRegions[i].start);
-    ESP_LOGI(TAG, " |> Region[%d] length [%d]:", i, state.memoryRegions[i].length);
-    // TODO: Read data.
+  for (int i = 0; i < _state.memoryRegions_count; ++i) {
+    ESP_LOGI(TAG, "Memory region[%d], Start(%d), Length(%d)",
+             i, _state.memoryRegions[i].start, _state.memoryRegions[i].length);
+    state->regions[i].start = _state.memoryRegions[i].start;
+    state->regions[i].length = _state.memoryRegions[i].length;
+    // Note: Data has already been read/decoded.
   }
 }
 
