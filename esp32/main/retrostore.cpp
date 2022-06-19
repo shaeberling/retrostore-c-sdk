@@ -2,6 +2,7 @@
 
 #include "data-fetcher-esp.h"
 
+#include <memory>
 #include <string>
 
 #include "esp_log.h"
@@ -30,16 +31,14 @@ const string PATH_FETCH_MEDIA_IMAGES = "/api/fetchMediaImages";
 static bool pb_memory_region_decode_cb(pb_istream_t* stream,
                                        const pb_field_t* field,
                                        void** arg) {
-  ESP_LOGI(TAG, ">>>>>>>> Decoding memory region[%d], length: %d", field->field_info_index, stream->bytes_left);
-  pb_byte_t* bytes = static_cast<pb_byte_t*>(malloc(sizeof(pb_byte_t) * stream->bytes_left));
-  pb_read(stream, bytes, stream->bytes_left);
+  std::unique_ptr<uint8_t> bytes(static_cast<uint8_t*>(malloc(sizeof(pb_byte_t) * stream->bytes_left)));
+  pb_read(stream, (pb_byte_t*) bytes.get(), stream->bytes_left);
   RsSystemState* state = static_cast<RsSystemState*>(*arg);
 
   RsMemoryRegion newRegion;
-  newRegion.data = static_cast<uint8_t*>(bytes);
+  newRegion.data = std::move(bytes);
   state->regions.push_back(std::move(newRegion));
 
-  ESP_LOGI(TAG, ">>>>>>>> Successfully read memory region into an array.");
   return true;  // success
 }
 
@@ -105,8 +104,6 @@ void RetroStore::downloadState(int token, RsSystemState* state) {
       return;
   }
   ESP_LOGI(TAG, "DownloadSystemState response decoded successfully.");
-  // We do this here so memory freeing works normally for users of the API.
-  state->_activate_memory_free();
 
   if (!stateResp.success) {
     ESP_LOGW(TAG, "Bad request. Server responded: %s", stateResp.message);

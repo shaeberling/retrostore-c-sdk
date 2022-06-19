@@ -1,6 +1,7 @@
 #ifndef retro_store_h
 #define retro_store_h
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -37,31 +38,14 @@ typedef struct {
 typedef struct _RsMemoryRegion {
   int start = 0;
   int length = 0;
-  uint8_t* data = NULL;
+  std::unique_ptr<uint8_t> data;
 
-  // Only free memory for external API users' objects, not for internal copies.
-  bool _activate_free = false;
-
-  ~_RsMemoryRegion () {
-    if (_activate_free && data != NULL) {
-      free(data);
-      data = NULL;
-      printf("Cleaned up data !!! ============================\n");
-    }
-  }
 } RsMemoryRegion;
 
 typedef struct {
   RsTrs80Model model = RsTrs80Model_UNKNOWN_MODEL;
   RsSystemStateRegisters registers;
   std::vector<RsMemoryRegion> regions;
-
-  void _activate_memory_free () {
-    for (auto& mem : regions) {
-      mem._activate_free = true;
-    }
-  }
-
 } RsSystemState;
 
 // API to communicate with the RetroStore server.
