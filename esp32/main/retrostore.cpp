@@ -105,6 +105,8 @@ void RetroStore::downloadState(int token, RsSystemState* state) {
       return;
   }
   ESP_LOGI(TAG, "DownloadSystemState response decoded successfully.");
+  // We do this here so memory freeing works normally for users of the API.
+  state->_activate_memory_free();
 
   if (!stateResp.success) {
     ESP_LOGW(TAG, "Bad request. Server responded: %s", stateResp.message);

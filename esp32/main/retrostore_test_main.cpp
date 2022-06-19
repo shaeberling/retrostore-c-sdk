@@ -26,18 +26,18 @@ using namespace std;
 using namespace retrostore;
 
 
+RetroStore rs;
+
+
 void testUploadDownloadSystemImage() {
   ESP_LOGI(TAG, "testUploadDownloadSystemImage()...");
   // TODO: Upload a system image for testing ...
   // TODO. Replace this hardcoded token with the one we got from the upload.
-  int token = 727;
-
-  RetroStore rs;
+  int token = 646;
 
   RsSystemState state;
   rs.downloadState(token, &state);
 }
-
 
 void initWifi() {
   ESP_LOGI(TAG, "Connecting to Wifi...");
@@ -46,8 +46,15 @@ void initWifi() {
 }
 
 void runAllTests() {
-  ESP_LOGI(TAG, "RetroStore API tests running...");
-  testUploadDownloadSystemImage();
+  auto initialFreeHeapKb = esp_get_free_heap_size() / 1024;
+  ESP_LOGI(TAG, "RetroStore API tests running... Initial free heap: %d", initialFreeHeapKb);
+
+  for (int i = 0; i < 10; ++i) {
+    testUploadDownloadSystemImage();
+    auto newFreeHeapKb = esp_get_free_heap_size() / 1024;
+    auto diffHeapKb =  initialFreeHeapKb - newFreeHeapKb;
+    ESP_LOGI(TAG, "After run [%d], free heap is %d, diff: %d", i, newFreeHeapKb, diffHeapKb);
+  }
 
   ESP_LOGI(TAG, "DONE. All tests run.");
 }
