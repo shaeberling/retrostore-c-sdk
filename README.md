@@ -1,10 +1,6 @@
 # retrostore-c-sdk
 The RetroStore C/C++ SDK
 
-## Developer setup
- - Install Bazel: https://bazel.build/install/ubuntu
- - `cd cpp && bazel run main:test-cli`
-
 ## Updating/generating protocol buffer files
 First, make sure you have the Protocol Buffer Compiler installed:
 https://github.com/protocolbuffers/protobuf#protocol-compiler-installation
@@ -33,3 +29,7 @@ The C++ RetroStore API has the following features:
    projects that run on microprocessors, such as the ESP32.
  - Has a `DataFetcher` API so that projects can easily provide their own way
    of fetching the data from RetroStore, depending on which APIs are available.
+
+## Example
+See https://github.com/shaeberling/retrostore-sdk-esp32-example for an example
+on how to use this in your ESP32 project.
