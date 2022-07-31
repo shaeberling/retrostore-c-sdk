@@ -12,7 +12,7 @@ namespace retrostore {
 class DataFetcherEsp {
   public:
     DataFetcherEsp(const std::string& host) : host_(host) {}
-    void Fetch(const std::string& path,
+    bool Fetch(const std::string& path,
                const RsData& params,
                RsData* data) const;
   private:

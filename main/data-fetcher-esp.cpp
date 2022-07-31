@@ -64,12 +64,12 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 
 namespace retrostore {
 
-void DataFetcherEsp::Fetch(const std::string& path,
+bool DataFetcherEsp::Fetch(const std::string& path,
                            const RsData& params,
                            RsData* data) const {
   if (data->len > 0 || data->data != NULL) {
     ESP_LOGE(TAG, "Given `data` should be empty!");
-    return;
+    return false;
   }
 
   esp_http_client_config_t config = {
@@ -82,14 +82,17 @@ void DataFetcherEsp::Fetch(const std::string& path,
   esp_http_client_set_header(client, "Content-Type", "application/octet-stream");
   esp_http_client_set_post_field(client, (const char*) params.data, params.len);
 
+  bool success = true;
   // Make GET request.
   esp_err_t err = esp_http_client_perform(client);
   if (err == ESP_OK) {
       ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %d",
               esp_http_client_get_status_code(client),
               esp_http_client_get_content_length(client));
+      success = esp_http_client_get_status_code(client) == 200;
   } else {
       ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
+      success = false;
   }
 
   // Transfer data and ownership.
@@ -99,6 +102,7 @@ void DataFetcherEsp::Fetch(const std::string& path,
   incoming_buffer.len = 0;
 
   esp_http_client_cleanup(client);
+  return success;
 }
 
 }  // namespace retrostore
