@@ -83,27 +83,31 @@ bool RetroStore::FetchApp(const std::string& appId, RsApp* app) {
   }
 
   // Parse the response.
-  ApiResponseApps apps = ApiResponseApps_init_zero;
+  ApiResponseApps resp = ApiResponseApps_init_zero;
   pb_istream_t stream_in = pb_istream_from_buffer(recv_buffer.data, recv_buffer.len);
-  if (!pb_decode(&stream_in, ApiResponseApps_fields, &apps)) {
+  if (!pb_decode(&stream_in, ApiResponseApps_fields, &resp)) {
       ESP_LOGE(TAG, "Decoding failed: %s", PB_GET_ERROR(&stream_in));
       return false;
   }
   ESP_LOGI(TAG, "ApiResponseApps decoded successfully.");
 
-  if (apps.app_count != 1) {
-    ESP_LOGE(TAG, "Exactly one app expected, but got: %d", apps.app_count);
+  if (!resp.success) {
+    ESP_LOGW(TAG, "Bad request. Server responded: %s", resp.message);
+    return false;
+  }
+  if (resp.app_count != 1) {
+    ESP_LOGE(TAG, "Exactly one app expected, but got: %d", resp.app_count);
     return false;
   }
 
-  app->id = apps.app[0].id;
-  app->name = apps.app[0].name;
-  app->version = apps.app[0].version;
-  app->description = apps.app[0].description;
-  app->release_year = apps.app[0].release_year;
-  app->author = apps.app[0].author;
+  app->id = resp.app[0].id;
+  app->name = resp.app[0].name;
+  app->version = resp.app[0].version;
+  app->description = resp.app[0].description;
+  app->release_year = resp.app[0].release_year;
+  app->author = resp.app[0].author;
 
-  switch (apps.app[0].ext_trs80.model) {
+  switch (resp.app[0].ext_trs80.model) {
     case Trs80Model_MODEL_I:
       app->model = RsTrs80Model_MODEL_I;
       break;
@@ -120,8 +124,8 @@ bool RetroStore::FetchApp(const std::string& appId, RsApp* app) {
       app->model = RsTrs80Model_UNKNOWN_MODEL;
   }
 
-  for (int i = 0; i < apps.app[0].screenshot_url_count; ++i) {
-    app->screenshot_urls.push_back(std::string(apps.app[0].screenshot_url[i]));
+  for (int i = 0; i < resp.app[0].screenshot_url_count; ++i) {
+    app->screenshot_urls.push_back(std::string(resp.app[0].screenshot_url[i]));
   }
 
   return true;
