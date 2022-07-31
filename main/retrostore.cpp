@@ -12,6 +12,8 @@
 #include "proto/pb_decode.h"
 #include "proto/pb_encode.h"
 
+#define ARRAY_SIZE(arr)     (sizeof(arr) / sizeof((arr)[0]))
+
 namespace {
   static const char *TAG = "rs-api";
 };  // namespace
@@ -25,6 +27,7 @@ namespace {
 const int DEFAULT_PORT = 80;
 const string PATH_UPLOAD_STATE = "/api/uploadState";
 const string PATH_DOWNLOAD_STATE = "/api/downloadState";
+const string PATH_GET_APP = "/api/getApp";
 const string PATH_FETCH_APPS = "/api/listApps";
 const string PATH_FETCH_MEDIA_IMAGES = "/api/fetchMediaImages";
 
@@ -56,7 +59,83 @@ void RetroStore::PrintVersion() {
   ESP_LOGI(TAG, "RetroStore[ESP] SDK version 2022-11-06");
 }
 
+bool RetroStore::FetchApp(const std::string& appId, RsApp* app) {
+  // Create parameter object.
+  GetAppParams params = GetAppParams_init_zero;
+  strcpy(params.app_id, appId.c_str());
+
+  // Create buffer for params.
+  RsData buffer(64);
+  pb_ostream_t stream_param = pb_ostream_from_buffer(buffer.data, buffer.len);
+  // Encode the object to the buffer stream above.
+  if (!pb_encode(&stream_param, GetAppParams_fields, &params)) {
+      ESP_LOGE(TAG, "Encoding params failed: %s", PB_GET_ERROR(&stream_param));
+      return false;
+  }
+  buffer.len = stream_param.bytes_written;
+  ESP_LOGI(TAG, "GetAppParams created. Size: %d", buffer.len);
+
+  RsData recv_buffer;
+  data_fetcher_->Fetch(PATH_GET_APP, buffer, &recv_buffer);
+  ESP_LOGI(TAG, "Received %d bytes response.", recv_buffer.len);
+  if (recv_buffer.len == 0) {
+    return false;
+  }
+
+  // Parse the response.
+  ApiResponseApps apps = ApiResponseApps_init_zero;
+  pb_istream_t stream_in = pb_istream_from_buffer(recv_buffer.data, recv_buffer.len);
+  if (!pb_decode(&stream_in, ApiResponseApps_fields, &apps)) {
+      ESP_LOGE(TAG, "Decoding failed: %s", PB_GET_ERROR(&stream_in));
+      return false;
+  }
+  ESP_LOGI(TAG, "ApiResponseApps decoded successfully.");
+
+  if (apps.app_count != 1) {
+    ESP_LOGE(TAG, "Exactly one app expected, but got: %d", apps.app_count);
+    return false;
+  }
+
+  app->id = apps.app[0].id;
+  app->name = apps.app[0].name;
+  app->version = apps.app[0].version;
+  app->description = apps.app[0].description;
+  app->release_year = apps.app[0].release_year;
+  app->author = apps.app[0].author;
+
+  switch (apps.app[0].ext_trs80.model) {
+    case Trs80Model_MODEL_I:
+      app->model = RsTrs80Model_MODEL_I;
+      break;
+    case Trs80Model_MODEL_III:
+      app->model = RsTrs80Model_MODEL_III;
+      break;
+    case Trs80Model_MODEL_4:
+      app->model = RsTrs80Model_MODEL_4;
+      break;
+    case Trs80Model_MODEL_4P:
+      app->model = RsTrs80Model_MODEL_4P;
+      break;
+    default:
+      app->model = RsTrs80Model_UNKNOWN_MODEL;
+  }
+
+  for (int i = 0; i < apps.app[0].screenshot_url_count; ++i) {
+    app->screenshot_urls.push_back(std::string(apps.app[0].screenshot_url[i]));
+  }
+
+  return true;
+}
+
 bool RetroStore::FetchApps(int start, int num) {
+  // See ApiProtos.options.
+  ApiResponseApps zero = ApiResponseApps_init_zero;
+  const auto max_apps_supported = ARRAY_SIZE(zero.app);
+  if (num > max_apps_supported) {
+    ESP_LOGE(TAG, "Cannot fetch more than %d apps.", max_apps_supported);
+    return false;
+  }
+
   ListAppsParams params;
   // Serial.println("FetchApps())");
   // data_fetcher_->Fetch(PATH_FETCH_APPS);
@@ -77,7 +156,7 @@ bool RetroStore::DownloadState(int token, RsSystemState* state) {
   // Create buffer for params.
   RsData buffer(128);
 
-  pb_ostream_t stream_param = pb_ostream_from_buffer(buffer.data, sizeof(buffer.len));
+  pb_ostream_t stream_param = pb_ostream_from_buffer(buffer.data, buffer.len);
   // Encode the object to the buffer stream above.
   if (!pb_encode(&stream_param, DownloadSystemStateParams_fields, &params)) {
       ESP_LOGE(TAG, "Encoding failed: %s", PB_GET_ERROR(&stream_param));
@@ -88,8 +167,11 @@ bool RetroStore::DownloadState(int token, RsSystemState* state) {
 
   RsData recv_buffer;
   data_fetcher_->Fetch(PATH_DOWNLOAD_STATE, buffer, &recv_buffer);
-
   ESP_LOGI(TAG, "Received %d bytes response.", recv_buffer.len);
+  if (recv_buffer.len == 0) {
+    return false;
+  }
+
 
   ApiResponseDownloadSystemState stateResp = ApiResponseDownloadSystemState_init_zero;
   auto num_mem_regions = sizeof(stateResp.systemState.memoryRegions)/sizeof(stateResp.systemState.memoryRegions[0]);

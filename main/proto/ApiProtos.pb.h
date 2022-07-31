@@ -104,9 +104,10 @@ typedef struct _App {
     char id[40];
     char name[64];
     char version[24];
-    char description[200];
+    char description[400];
     int32_t release_year;
-    pb_callback_t screenshot_url;
+    pb_size_t screenshot_url_count;
+    char screenshot_url[5][150];
     char author[64];
     bool has_ext_trs80;
     Trs80Extension ext_trs80;
@@ -124,7 +125,7 @@ typedef struct _ApiResponseApps {
     bool success;
     char message[80];
     pb_size_t app_count;
-    App app[10];
+    App app[5];
 } ApiResponseApps;
 
 typedef struct _ApiResponseDownloadSystemState { 
@@ -155,11 +156,11 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define ApiResponseApps_init_default             {0, "", 0, {App_init_default, App_init_default, App_init_default, App_init_default, App_init_default, App_init_default, App_init_default, App_init_default, App_init_default, App_init_default}}
+#define ApiResponseApps_init_default             {0, "", 0, {App_init_default, App_init_default, App_init_default, App_init_default, App_init_default}}
 #define ApiResponseMediaImages_init_default      {0, "", 0, {MediaImage_init_default, MediaImage_init_default, MediaImage_init_default, MediaImage_init_default, MediaImage_init_default}}
 #define ApiResponseDownloadSystemState_init_default {0, "", false, SystemState_init_default}
 #define ApiResponseUploadSystemState_init_default {0, "", 0}
-#define App_init_default                         {"", "", "", "", 0, {{NULL}, NULL}, "", false, Trs80Extension_init_default}
+#define App_init_default                         {"", "", "", "", 0, 0, {"", "", "", "", ""}, "", false, Trs80Extension_init_default}
 #define Trs80Extension_init_default              {_Trs80Model_MIN}
 #define MediaImage_init_default                  {_MediaType_MIN, "", {{NULL}, NULL}, 0, ""}
 #define SystemState_init_default                 {_Trs80Model_MIN, false, SystemState_Registers_init_default, 0, {SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default}}
@@ -171,11 +172,11 @@ extern "C" {
 #define ListAppsParams_Trs80Params_init_default  {{{NULL}, NULL}}
 #define UploadSystemStateParams_init_default     {false, SystemState_init_default}
 #define DownloadSystemStateParams_init_default   {0}
-#define ApiResponseApps_init_zero                {0, "", 0, {App_init_zero, App_init_zero, App_init_zero, App_init_zero, App_init_zero, App_init_zero, App_init_zero, App_init_zero, App_init_zero, App_init_zero}}
+#define ApiResponseApps_init_zero                {0, "", 0, {App_init_zero, App_init_zero, App_init_zero, App_init_zero, App_init_zero}}
 #define ApiResponseMediaImages_init_zero         {0, "", 0, {MediaImage_init_zero, MediaImage_init_zero, MediaImage_init_zero, MediaImage_init_zero, MediaImage_init_zero}}
 #define ApiResponseDownloadSystemState_init_zero {0, "", false, SystemState_init_zero}
 #define ApiResponseUploadSystemState_init_zero   {0, "", 0}
-#define App_init_zero                            {"", "", "", "", 0, {{NULL}, NULL}, "", false, Trs80Extension_init_zero}
+#define App_init_zero                            {"", "", "", "", 0, 0, {"", "", "", "", ""}, "", false, Trs80Extension_init_zero}
 #define Trs80Extension_init_zero                 {_Trs80Model_MIN}
 #define MediaImage_init_zero                     {_MediaType_MIN, "", {{NULL}, NULL}, 0, ""}
 #define SystemState_init_zero                    {_Trs80Model_MIN, false, SystemState_Registers_init_zero, 0, {SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero}}
@@ -284,10 +285,10 @@ X(a, STATIC,   SINGULAR, STRING,   name,              2) \
 X(a, STATIC,   SINGULAR, STRING,   version,           3) \
 X(a, STATIC,   SINGULAR, STRING,   description,       4) \
 X(a, STATIC,   SINGULAR, INT32,    release_year,      5) \
-X(a, CALLBACK, REPEATED, STRING,   screenshot_url,    6) \
+X(a, STATIC,   REPEATED, STRING,   screenshot_url,    6) \
 X(a, STATIC,   SINGULAR, STRING,   author,            7) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  ext_trs80,         8)
-#define App_CALLBACK pb_default_field_callback
+#define App_CALLBACK NULL
 #define App_DEFAULT NULL
 #define App_ext_trs80_MSGTYPE Trs80Extension
 
@@ -411,17 +412,17 @@ extern const pb_msgdesc_t DownloadSystemStateParams_msg;
 #define DownloadSystemStateParams_fields &DownloadSystemStateParams_msg
 
 /* Maximum encoded size of messages (where known) */
-/* ApiResponseApps_size depends on runtime parameters */
 /* ApiResponseMediaImages_size depends on runtime parameters */
 /* ApiResponseDownloadSystemState_size depends on runtime parameters */
-/* App_size depends on runtime parameters */
 /* MediaImage_size depends on runtime parameters */
 /* SystemState_size depends on runtime parameters */
 /* SystemState_MemoryRegion_size depends on runtime parameters */
 /* ListAppsParams_size depends on runtime parameters */
 /* ListAppsParams_Trs80Params_size depends on runtime parameters */
 /* UploadSystemStateParams_size depends on runtime parameters */
+#define ApiResponseApps_size                     6963
 #define ApiResponseUploadSystemState_size        94
+#define App_size                                 1373
 #define DownloadSystemStateParams_size           11
 #define FetchMediaImagesParams_size              41
 #define GetAppParams_size                        41

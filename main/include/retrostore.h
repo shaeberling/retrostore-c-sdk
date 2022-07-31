@@ -39,7 +39,6 @@ typedef struct _RsMemoryRegion {
   int start = 0;
   int length = 0;
   std::unique_ptr<uint8_t> data;
-
 } RsMemoryRegion;
 
 typedef struct {
@@ -47,6 +46,17 @@ typedef struct {
   RsSystemStateRegisters registers;
   std::vector<RsMemoryRegion> regions;
 } RsSystemState;
+
+typedef struct {
+  std::string id;
+  std::string name;
+  std::string version;
+  std::string description;
+  int release_year;
+  std::vector<std::string> screenshot_urls;
+  std::string author;
+  RsTrs80Model model;
+} RsApp;
 
 // API to communicate with the RetroStore server.
 class RetroStore
@@ -58,6 +68,8 @@ class RetroStore
     RetroStore(DataFetcherEsp* data_fetcher);
     // Print version of the library.
     void PrintVersion();
+    // Fetches data about a single app with the given ID.
+    bool FetchApp(const std::string& appId, RsApp* app);
     // Fetch metadata of retrostore apps from catalog.
     bool FetchApps(int start, int num);
     // Fetch media images for the app with the given ID.
