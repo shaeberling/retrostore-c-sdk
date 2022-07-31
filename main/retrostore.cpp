@@ -45,6 +45,37 @@ static bool pb_memory_region_decode_cb(pb_istream_t* stream,
   return true;  // success
 }
 
+static void convertApp(const App pbApp, RsApp* app) {
+  app->id = pbApp.id;
+  app->name = pbApp.name;
+  app->version = pbApp.version;
+  app->description = pbApp.description;
+  ESP_LOGI(TAG, "Description length: %d", strlen(pbApp.description));
+  app->release_year = pbApp.release_year;
+  app->author = pbApp.author;
+
+  switch (pbApp.ext_trs80.model) {
+    case Trs80Model_MODEL_I:
+      app->model = RsTrs80Model_MODEL_I;
+      break;
+    case Trs80Model_MODEL_III:
+      app->model = RsTrs80Model_MODEL_III;
+      break;
+    case Trs80Model_MODEL_4:
+      app->model = RsTrs80Model_MODEL_4;
+      break;
+    case Trs80Model_MODEL_4P:
+      app->model = RsTrs80Model_MODEL_4P;
+      break;
+    default:
+      app->model = RsTrs80Model_UNKNOWN_MODEL;
+  }
+
+  for (int i = 0; i < pbApp.screenshot_url_count; ++i) {
+    app->screenshot_urls.push_back(std::string(pbApp.screenshot_url[i]));
+  }
+}
+
 }
 
 RetroStore::RetroStore()
@@ -100,38 +131,11 @@ bool RetroStore::FetchApp(const std::string& appId, RsApp* app) {
     return false;
   }
 
-  app->id = resp.app[0].id;
-  app->name = resp.app[0].name;
-  app->version = resp.app[0].version;
-  app->description = resp.app[0].description;
-  app->release_year = resp.app[0].release_year;
-  app->author = resp.app[0].author;
-
-  switch (resp.app[0].ext_trs80.model) {
-    case Trs80Model_MODEL_I:
-      app->model = RsTrs80Model_MODEL_I;
-      break;
-    case Trs80Model_MODEL_III:
-      app->model = RsTrs80Model_MODEL_III;
-      break;
-    case Trs80Model_MODEL_4:
-      app->model = RsTrs80Model_MODEL_4;
-      break;
-    case Trs80Model_MODEL_4P:
-      app->model = RsTrs80Model_MODEL_4P;
-      break;
-    default:
-      app->model = RsTrs80Model_UNKNOWN_MODEL;
-  }
-
-  for (int i = 0; i < resp.app[0].screenshot_url_count; ++i) {
-    app->screenshot_urls.push_back(std::string(resp.app[0].screenshot_url[i]));
-  }
-
+  convertApp(resp.app[0], app);
   return true;
 }
 
-bool RetroStore::FetchApps(int start, int num) {
+bool RetroStore::FetchApps(int start, int num, std::vector<RsApp>* apps) {
   // See ApiProtos.options.
   ApiResponseApps zero = ApiResponseApps_init_zero;
   const auto max_apps_supported = ARRAY_SIZE(zero.app);
@@ -140,9 +144,52 @@ bool RetroStore::FetchApps(int start, int num) {
     return false;
   }
 
-  ListAppsParams params;
-  // Serial.println("FetchApps())");
-  // data_fetcher_->Fetch(PATH_FETCH_APPS);
+  ListAppsParams params = ListAppsParams_init_zero;
+  params.start = start;
+  params.num = num;
+
+  // Create buffer for params.
+  RsData buffer(200);
+  pb_ostream_t stream_param = pb_ostream_from_buffer(buffer.data, buffer.len);
+  // Encode the object to the buffer stream above.
+  if (!pb_encode(&stream_param, ListAppsParams_fields, &params)) {
+      ESP_LOGE(TAG, "Encoding params failed: %s", PB_GET_ERROR(&stream_param));
+      return false;
+  }
+  buffer.len = stream_param.bytes_written;
+  ESP_LOGI(TAG, "ListAppsParams created. Size: %d", buffer.len);
+
+  RsData recv_buffer;
+  data_fetcher_->Fetch(PATH_FETCH_APPS, buffer, &recv_buffer);
+  ESP_LOGI(TAG, "Received %d bytes response.", recv_buffer.len);
+  if (recv_buffer.len == 0) {
+    return false;
+  }
+
+  // Parse the response.
+  ApiResponseApps resp = ApiResponseApps_init_zero;
+  pb_istream_t stream_in = pb_istream_from_buffer(recv_buffer.data, recv_buffer.len);
+  if (!pb_decode(&stream_in, ApiResponseApps_fields, &resp)) {
+      ESP_LOGE(TAG, "Decoding failed: %s", PB_GET_ERROR(&stream_in));
+      return false;
+  }
+  ESP_LOGI(TAG, "ApiResponseApps decoded successfully.");
+
+  if (!resp.success) {
+    ESP_LOGW(TAG, "Bad request. Server responded: %s", resp.message);
+    return false;
+  }
+  if (resp.app_count > num) {
+    ESP_LOGE(TAG, "Max %d apps expected, but got: %d", num, resp.app_count);
+    return false;
+  }
+
+  for (int i = 0; i < resp.app_count; ++i) {
+    RsApp app;
+    convertApp(resp.app[i], &app);
+    apps->push_back(app);
+  }
+
   return true;
 }
 

@@ -71,7 +71,7 @@ class RetroStore
     // Fetches data about a single app with the given ID.
     bool FetchApp(const std::string& appId, RsApp* app);
     // Fetch metadata of retrostore apps from catalog.
-    bool FetchApps(int start, int num);
+    bool FetchApps(int start, int num, std::vector<RsApp>* apps);
     // Fetch media images for the app with the given ID.
     void FetchMediaImages(const std::string& appId);
     // Upload system state
