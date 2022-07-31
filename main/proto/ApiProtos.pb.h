@@ -104,7 +104,7 @@ typedef struct _App {
     char id[40];
     char name[64];
     char version[24];
-    char description[400];
+    char description[1000];
     int32_t release_year;
     pb_size_t screenshot_url_count;
     char screenshot_url[5][150];
@@ -420,9 +420,9 @@ extern const pb_msgdesc_t DownloadSystemStateParams_msg;
 /* ListAppsParams_size depends on runtime parameters */
 /* ListAppsParams_Trs80Params_size depends on runtime parameters */
 /* UploadSystemStateParams_size depends on runtime parameters */
-#define ApiResponseApps_size                     6963
+#define ApiResponseApps_size                     9963
 #define ApiResponseUploadSystemState_size        94
-#define App_size                                 1373
+#define App_size                                 1973
 #define DownloadSystemStateParams_size           11
 #define FetchMediaImagesParams_size              41
 #define GetAppParams_size                        41
