@@ -136,6 +136,10 @@ bool RetroStore::FetchApp(const std::string& appId, RsApp* app) {
 }
 
 bool RetroStore::FetchApps(int start, int num, std::vector<RsApp>* apps) {
+  return FetchApps(start, num, "", apps);
+}
+
+bool RetroStore::FetchApps(int start, int num, const std::string& query, std::vector<RsApp>* apps) {
   // See ApiProtos.options.
   ApiResponseApps zero = ApiResponseApps_init_zero;
   const auto max_apps_supported = ARRAY_SIZE(zero.app);
@@ -147,6 +151,9 @@ bool RetroStore::FetchApps(int start, int num, std::vector<RsApp>* apps) {
   ListAppsParams params = ListAppsParams_init_zero;
   params.start = start;
   params.num = num;
+  if (!query.empty()) {
+    strcpy(params.query, query.c_str());
+  }
 
   // Create buffer for params.
   RsData buffer(200);
