@@ -65,7 +65,7 @@ class RetroStore
     // Upload system state
     // int UploadState(const RsSystemState& state);
     // Download system state
-    void downloadState(int token, RsSystemState* state);
+    bool DownloadState(int token, RsSystemState* state);
   private:
     const DataFetcherEsp* data_fetcher_;
 };
