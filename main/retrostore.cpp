@@ -34,6 +34,7 @@ const string PATH_FETCH_MEDIA_IMAGES = "/api/fetchMediaImages";
 static bool pb_memory_region_decode_cb(pb_istream_t* stream,
                                        const pb_field_t* field,
                                        void** arg) {
+  // FIXME: This is not called when data is zero. Don't even send it from the server!
   std::unique_ptr<uint8_t> bytes(static_cast<uint8_t*>(malloc(sizeof(pb_byte_t) * stream->bytes_left)));
   pb_read(stream, (pb_byte_t*) bytes.get(), stream->bytes_left);
   RsSystemState* state = static_cast<RsSystemState*>(*arg);
@@ -45,6 +46,49 @@ static bool pb_memory_region_decode_cb(pb_istream_t* stream,
   return true;  // success
 }
 
+static bool pb_memory_region_encode_cb(pb_ostream_t* stream,
+                                       const pb_field_t* field,
+                                       void * const *arg) {
+
+  ESP_LOGI(TAG, "Encoding memory region!");
+  if (!pb_encode_tag_for_field(stream, field)) {
+    return false;
+  }
+
+  RsMemoryRegion* region = static_cast<RsMemoryRegion*>(*arg);
+  return pb_encode_string(stream, region->data.get(), region->length);
+}
+
+static RsTrs80Model fromPbModel(Trs80Model pbModel) {
+  switch (pbModel) {
+    case Trs80Model_MODEL_I:
+      return RsTrs80Model_MODEL_I;
+    case Trs80Model_MODEL_III:
+      return RsTrs80Model_MODEL_III;
+    case Trs80Model_MODEL_4:
+      return RsTrs80Model_MODEL_4;
+    case Trs80Model_MODEL_4P:
+      return RsTrs80Model_MODEL_4P;
+    default:
+      return RsTrs80Model_UNKNOWN_MODEL;
+  }
+}
+static Trs80Model toPbModel(RsTrs80Model model) {
+  switch (model) {
+    case RsTrs80Model_MODEL_I:
+      return Trs80Model_MODEL_I;
+    case RsTrs80Model_MODEL_III:
+      return Trs80Model_MODEL_III;
+    case RsTrs80Model_MODEL_4:
+      return Trs80Model_MODEL_4;
+    case RsTrs80Model_MODEL_4P:
+      return Trs80Model_MODEL_4P;
+    case RsTrs80Model_UNKNOWN_MODEL:
+      return Trs80Model_UNKNOWN_MODEL;
+  }
+  return Trs80Model_UNKNOWN_MODEL;
+}
+
 static void convertApp(const App pbApp, RsApp* app) {
   app->id = pbApp.id;
   app->name = pbApp.name;
@@ -53,23 +97,7 @@ static void convertApp(const App pbApp, RsApp* app) {
   ESP_LOGI(TAG, "Description length: %d", strlen(pbApp.description));
   app->release_year = pbApp.release_year;
   app->author = pbApp.author;
-
-  switch (pbApp.ext_trs80.model) {
-    case Trs80Model_MODEL_I:
-      app->model = RsTrs80Model_MODEL_I;
-      break;
-    case Trs80Model_MODEL_III:
-      app->model = RsTrs80Model_MODEL_III;
-      break;
-    case Trs80Model_MODEL_4:
-      app->model = RsTrs80Model_MODEL_4;
-      break;
-    case Trs80Model_MODEL_4P:
-      app->model = RsTrs80Model_MODEL_4P;
-      break;
-    default:
-      app->model = RsTrs80Model_UNKNOWN_MODEL;
-  }
+  app->model = fromPbModel(pbApp.ext_trs80.model);
 
   for (int i = 0; i < pbApp.screenshot_url_count; ++i) {
     app->screenshot_urls.push_back(std::string(pbApp.screenshot_url[i]));
@@ -107,7 +135,12 @@ bool RetroStore::FetchApp(const std::string& appId, RsApp* app) {
   ESP_LOGI(TAG, "GetAppParams created. Size: %d", buffer.len);
 
   RsData recv_buffer;
-  data_fetcher_->Fetch(PATH_GET_APP, buffer, &recv_buffer);
+  bool success = data_fetcher_->Fetch(PATH_GET_APP, buffer, &recv_buffer);
+  if (!success) {
+    ESP_LOGE(TAG, "Error fetching data");
+    return false;
+  }
+
   ESP_LOGI(TAG, "Received %d bytes response.", recv_buffer.len);
   if (recv_buffer.len == 0) {
     return false;
@@ -167,7 +200,11 @@ bool RetroStore::FetchApps(int start, int num, const std::string& query, std::ve
   ESP_LOGI(TAG, "ListAppsParams created. Size: %d", buffer.len);
 
   RsData recv_buffer;
-  data_fetcher_->Fetch(PATH_FETCH_APPS, buffer, &recv_buffer);
+  bool success = data_fetcher_->Fetch(PATH_FETCH_APPS, buffer, &recv_buffer);
+  if (!success) {
+    ESP_LOGE(TAG, "Error fetching data");
+    return false;
+  }
   ESP_LOGI(TAG, "Received %d bytes response.", recv_buffer.len);
   if (recv_buffer.len == 0) {
     return false;
@@ -201,10 +238,88 @@ bool RetroStore::FetchApps(int start, int num, const std::string& query, std::ve
 }
 
 void RetroStore::FetchMediaImages(const string& appId) {
-  FetchMediaImagesParams params;
+  FetchMediaImagesParams params = FetchMediaImagesParams_init_zero;
   // params.app_id = appId;
   // Serial.println("FetchMediaImages()");
 }
+
+int RetroStore::UploadState(RsSystemState& state) {
+  UploadSystemStateParams params = UploadSystemStateParams_init_zero;
+  params.has_state = true;
+  params.state.has_registers = true;
+
+  params.state.model = toPbModel(state.model);
+  params.state.registers.ix = state.registers.ix;
+  params.state.registers.iy = state.registers.iy;
+  params.state.registers.pc = state.registers.pc;
+  params.state.registers.sp = state.registers.sp;
+  params.state.registers.af = state.registers.af;
+  params.state.registers.bc = state.registers.bc;
+  params.state.registers.de = state.registers.de;
+  params.state.registers.hl = state.registers.hl;
+  params.state.registers.af_prime = state.registers.af_prime;
+  params.state.registers.bc_prime = state.registers.bc_prime;
+  params.state.registers.de_prime = state.registers.de_prime;
+  params.state.registers.hl_prime = state.registers.hl_prime;
+  params.state.registers.i = state.registers.i;
+  params.state.registers.r_1 = state.registers.r_1;
+  params.state.registers.r_2 = state.registers.r_2;
+
+  if (state.regions.size() > ARRAY_SIZE(params.state.memoryRegions)) {
+    ESP_LOGE(TAG, "Too many memory regions. Increase in PB options.");
+    return -1;
+  }
+  params.state.memoryRegions_count = state.regions.size();
+  for (int i = 0; i < state.regions.size(); ++i) {
+    params.state.memoryRegions[i].start = state.regions[i].start;
+    params.state.memoryRegions[i].length = state.regions[i].length;
+    params.state.memoryRegions[i].data.funcs.encode = &pb_memory_region_encode_cb;
+    params.state.memoryRegions[i].data.arg = &state.regions[i];
+  }
+
+  // Size of the params depends on the region size.
+  int paramSize = 200;
+  for (const auto& region : state.regions) {
+    paramSize += region.length + 10;
+  }
+
+  // Create buffer for params.
+  RsData buffer(paramSize);
+  pb_ostream_t stream_param = pb_ostream_from_buffer(buffer.data, buffer.len);
+  // Encode the object to the buffer stream above.
+  if (!pb_encode(&stream_param, UploadSystemStateParams_fields, &params)) {
+      ESP_LOGE(TAG, "Encoding failed: %s", PB_GET_ERROR(&stream_param));
+      return -1;
+  }
+  buffer.len = stream_param.bytes_written;
+  ESP_LOGI(TAG, "UploadSystemStateParams created. Size: %d", buffer.len);
+
+  RsData recv_buffer;
+  bool success = data_fetcher_->Fetch(PATH_UPLOAD_STATE, buffer, &recv_buffer);
+  if (!success) {
+    ESP_LOGE(TAG, "Error fetching data");
+    return -1;
+  }
+  ESP_LOGI(TAG, "Received %d bytes response.", recv_buffer.len);
+  if (recv_buffer.len == 0) {
+    return -1;
+  }
+
+  ApiResponseUploadSystemState stateResp = ApiResponseUploadSystemState_init_zero;
+  pb_istream_t stream_in = pb_istream_from_buffer(recv_buffer.data, recv_buffer.len);
+  if (!pb_decode(&stream_in, ApiResponseUploadSystemState_fields, &stateResp)) {
+      ESP_LOGE(TAG, "Decoding failed: %s", PB_GET_ERROR(&stream_in));
+      return false;
+  }
+  ESP_LOGI(TAG, "UploadSystemState response decoded successfully.");
+
+  if (!stateResp.success) {
+    ESP_LOGW(TAG, "Bad request. Server responded: %s", stateResp.message);
+    return false;
+  }
+  return stateResp.token;
+}
+
 
 bool RetroStore::DownloadState(int token, RsSystemState* state) {
   // Create params object and set token.
@@ -224,7 +339,11 @@ bool RetroStore::DownloadState(int token, RsSystemState* state) {
   ESP_LOGI(TAG, "DownloadSystemStateParams created. Size: %d", buffer.len);
 
   RsData recv_buffer;
-  data_fetcher_->Fetch(PATH_DOWNLOAD_STATE, buffer, &recv_buffer);
+  bool success = data_fetcher_->Fetch(PATH_DOWNLOAD_STATE, buffer, &recv_buffer);
+  if (!success) {
+    ESP_LOGE(TAG, "Error fetching data");
+    return false;
+  }
   ESP_LOGI(TAG, "Received %d bytes response.", recv_buffer.len);
   if (recv_buffer.len == 0) {
     return false;
@@ -255,6 +374,8 @@ bool RetroStore::DownloadState(int token, RsSystemState* state) {
   }
   auto& _state = stateResp.systemState;
 
+  state->model = fromPbModel(_state.model);
+
   // Copy registers
   state->registers.ix = _state.registers.ix;
   state->registers.iy = _state.registers.iy;
@@ -279,6 +400,9 @@ bool RetroStore::DownloadState(int token, RsSystemState* state) {
     state->regions[i].start = _state.memoryRegions[i].start;
     state->regions[i].length = _state.memoryRegions[i].length;
     // Note: Data has already been read/decoded.
+    // FIXME: There is one issue: If data is of size 0 then the callback will
+    // not be called and we won't have enough regions in the vector and this
+    // will therefore crash. Best to not send empty regions down.
   }
   return true;
 }
