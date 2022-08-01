@@ -237,10 +237,47 @@ bool RetroStore::FetchApps(int start, int num, const std::string& query, std::ve
   return true;
 }
 
-void RetroStore::FetchMediaImages(const string& appId) {
+bool RetroStore::FetchMediaImages(const string& appId) {
   FetchMediaImagesParams params = FetchMediaImagesParams_init_zero;
-  // params.app_id = appId;
-  // Serial.println("FetchMediaImages()");
+  strcpy(params.app_id, appId.c_str());
+
+  RsData buffer(64);
+  pb_ostream_t stream_param = pb_ostream_from_buffer(buffer.data, buffer.len);
+  // Encode the object to the buffer stream above.
+  if (!pb_encode(&stream_param, FetchMediaImagesParams_fields, &params)) {
+      ESP_LOGE(TAG, "Encoding params failed: %s", PB_GET_ERROR(&stream_param));
+      return false;
+  }
+  buffer.len = stream_param.bytes_written;
+  ESP_LOGI(TAG, "FetchMediaImagesParams created. Size: %d", buffer.len);
+
+  RsData recv_buffer;
+  bool success = data_fetcher_->Fetch(PATH_FETCH_MEDIA_IMAGES, buffer, &recv_buffer);
+  if (!success) {
+    ESP_LOGE(TAG, "Error fetching data");
+    return false;
+  }
+  ESP_LOGI(TAG, "Received %d bytes response.", recv_buffer.len);
+  if (recv_buffer.len == 0) {
+    return false;
+  }
+
+  ApiResponseMediaImages resp = ApiResponseMediaImages_init_zero;
+  pb_istream_t stream_in = pb_istream_from_buffer(recv_buffer.data, recv_buffer.len);
+  if (!pb_decode(&stream_in, ApiResponseMediaImages_fields, &resp)) {
+      ESP_LOGE(TAG, "Decoding failed: %s", PB_GET_ERROR(&stream_in));
+      return false;
+  }
+  ESP_LOGI(TAG, "ApiResponseMediaImages decoded successfully.");
+
+  if (!resp.success) {
+    ESP_LOGW(TAG, "Bad request. Server responded: %s", resp.message);
+    return false;
+  }
+
+  // FIXME: Complete if we have enough RAM.
+
+  return true;
 }
 
 int RetroStore::UploadState(RsSystemState& state) {

@@ -75,7 +75,7 @@ class RetroStore
     // Query apps based on a search term.
     bool FetchApps(int start, int num, const std::string& query, std::vector<RsApp>* apps);
     // Fetch media images for the app with the given ID.
-    void FetchMediaImages(const std::string& appId);
+    bool FetchMediaImages(const std::string& appId);
     // Upload system state and return the token. Token is -1 on error.
     int UploadState(RsSystemState& state);
     // Download system state
