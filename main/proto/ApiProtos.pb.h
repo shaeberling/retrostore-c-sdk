@@ -33,6 +33,16 @@ typedef struct _ListAppsParams_Trs80Params {
     pb_callback_t media_types;
 } ListAppsParams_Trs80Params;
 
+/* Response for APIs that receive a list of apps. */
+typedef struct _ApiResponseApps { 
+    /* Whether the request was a success. */
+    bool success;
+    /* An optional (error) message, human-readable. */
+    char message[80];
+    /* A list of apps returned by the request. */
+    pb_callback_t app;
+} ApiResponseApps;
+
 /* Response for APIs that receive a list of apps (NANO version). */
 typedef struct _ApiResponseAppsNano { 
     /* Whether the request was a success. */
@@ -179,17 +189,6 @@ typedef struct _SystemState {
     SystemState_MemoryRegion memoryRegions[10];
 } SystemState;
 
-/* Response for APIs that receive a list of apps. */
-typedef struct _ApiResponseApps { 
-    /* Whether the request was a success. */
-    bool success;
-    /* An optional (error) message, human-readable. */
-    char message[80];
-    /* A list of apps returned by the request. */
-    pb_size_t app_count;
-    App app[5];
-} ApiResponseApps;
-
 typedef struct _ApiResponseDownloadSystemState { 
     /* Whether the request was a success. */
     bool success;
@@ -221,7 +220,7 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define ApiResponseApps_init_default             {0, "", 0, {App_init_default, App_init_default, App_init_default, App_init_default, App_init_default}}
+#define ApiResponseApps_init_default             {0, "", {{NULL}, NULL}}
 #define ApiResponseAppsNano_init_default         {0, "", {{NULL}, NULL}}
 #define ApiResponseMediaImages_init_default      {0, "", 0, {MediaImage_init_default, MediaImage_init_default, MediaImage_init_default, MediaImage_init_default, MediaImage_init_default}}
 #define ApiResponseDownloadSystemState_init_default {0, "", false, SystemState_init_default}
@@ -239,7 +238,7 @@ extern "C" {
 #define ListAppsParams_Trs80Params_init_default  {{{NULL}, NULL}}
 #define UploadSystemStateParams_init_default     {false, SystemState_init_default}
 #define DownloadSystemStateParams_init_default   {0}
-#define ApiResponseApps_init_zero                {0, "", 0, {App_init_zero, App_init_zero, App_init_zero, App_init_zero, App_init_zero}}
+#define ApiResponseApps_init_zero                {0, "", {{NULL}, NULL}}
 #define ApiResponseAppsNano_init_zero            {0, "", {{NULL}, NULL}}
 #define ApiResponseMediaImages_init_zero         {0, "", 0, {MediaImage_init_zero, MediaImage_init_zero, MediaImage_init_zero, MediaImage_init_zero, MediaImage_init_zero}}
 #define ApiResponseDownloadSystemState_init_zero {0, "", false, SystemState_init_zero}
@@ -260,6 +259,9 @@ extern "C" {
 
 /* Field tags (for use in manual encoding/decoding) */
 #define ListAppsParams_Trs80Params_media_types_tag 1
+#define ApiResponseApps_success_tag              1
+#define ApiResponseApps_message_tag              2
+#define ApiResponseApps_app_tag                  3
 #define ApiResponseAppsNano_success_tag          1
 #define ApiResponseAppsNano_message_tag          2
 #define ApiResponseAppsNano_app_tag              3
@@ -317,9 +319,6 @@ extern "C" {
 #define SystemState_model_tag                    1
 #define SystemState_registers_tag                2
 #define SystemState_memoryRegions_tag            3
-#define ApiResponseApps_success_tag              1
-#define ApiResponseApps_message_tag              2
-#define ApiResponseApps_app_tag                  3
 #define ApiResponseDownloadSystemState_success_tag 1
 #define ApiResponseDownloadSystemState_message_tag 2
 #define ApiResponseDownloadSystemState_systemState_tag 3
@@ -329,8 +328,8 @@ extern "C" {
 #define ApiResponseApps_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, BOOL,     success,           1) \
 X(a, STATIC,   SINGULAR, STRING,   message,           2) \
-X(a, STATIC,   REPEATED, MESSAGE,  app,               3)
-#define ApiResponseApps_CALLBACK NULL
+X(a, CALLBACK, REPEATED, MESSAGE,  app,               3)
+#define ApiResponseApps_CALLBACK pb_default_field_callback
 #define ApiResponseApps_DEFAULT NULL
 #define ApiResponseApps_app_MSGTYPE App
 
@@ -513,6 +512,7 @@ extern const pb_msgdesc_t DownloadSystemStateParams_msg;
 #define DownloadSystemStateParams_fields &DownloadSystemStateParams_msg
 
 /* Maximum encoded size of messages (where known) */
+/* ApiResponseApps_size depends on runtime parameters */
 /* ApiResponseAppsNano_size depends on runtime parameters */
 /* ApiResponseMediaImages_size depends on runtime parameters */
 /* ApiResponseDownloadSystemState_size depends on runtime parameters */
@@ -522,7 +522,6 @@ extern const pb_msgdesc_t DownloadSystemStateParams_msg;
 /* ListAppsParams_size depends on runtime parameters */
 /* ListAppsParams_Trs80Params_size depends on runtime parameters */
 /* UploadSystemStateParams_size depends on runtime parameters */
-#define ApiResponseApps_size                     6963
 #define ApiResponseUploadSystemState_size        94
 #define AppNano_size                             211
 #define App_size                                 1373

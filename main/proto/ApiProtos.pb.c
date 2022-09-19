@@ -6,7 +6,7 @@
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
-PB_BIND(ApiResponseApps, ApiResponseApps, 4)
+PB_BIND(ApiResponseApps, ApiResponseApps, AUTO)
 
 
 PB_BIND(ApiResponseAppsNano, ApiResponseAppsNano, AUTO)

@@ -32,34 +32,6 @@ const string PATH_FETCH_APPS = "/api/listApps";
 const string PATH_FETCH_APPS_NANO = "/api/listAppsNano";
 const string PATH_FETCH_MEDIA_IMAGES = "/api/fetchMediaImages";
 
-static bool pb_memory_region_decode_cb(pb_istream_t* stream,
-                                       const pb_field_t* field,
-                                       void** arg) {
-  // FIXME: This is not called when data is zero. Don't even send it from the server!
-  std::unique_ptr<uint8_t> bytes(static_cast<uint8_t*>(malloc(sizeof(pb_byte_t) * stream->bytes_left)));
-  pb_read(stream, (pb_byte_t*) bytes.get(), stream->bytes_left);
-  RsSystemState* state = static_cast<RsSystemState*>(*arg);
-
-  RsMemoryRegion newRegion;
-  newRegion.data = std::move(bytes);
-  state->regions.push_back(std::move(newRegion));
-
-  return true;  // success
-}
-
-static bool pb_memory_region_encode_cb(pb_ostream_t* stream,
-                                       const pb_field_t* field,
-                                       void * const *arg) {
-
-  ESP_LOGI(TAG, "Encoding memory region!");
-  if (!pb_encode_tag_for_field(stream, field)) {
-    return false;
-  }
-
-  RsMemoryRegion* region = static_cast<RsMemoryRegion*>(*arg);
-  return pb_encode_string(stream, region->data.get(), region->length);
-}
-
 static RsTrs80Model fromPbModel(Trs80Model pbModel) {
   switch (pbModel) {
     case Trs80Model_MODEL_I:
@@ -90,6 +62,34 @@ static Trs80Model toPbModel(RsTrs80Model model) {
   return Trs80Model_UNKNOWN_MODEL;
 }
 
+static bool pb_memory_region_decode_cb(pb_istream_t* stream,
+                                       const pb_field_t* field,
+                                       void** arg) {
+  // FIXME: This is not called when data is zero. Don't even send it from the server!
+  std::unique_ptr<uint8_t> bytes(static_cast<uint8_t*>(malloc(sizeof(pb_byte_t) * stream->bytes_left)));
+  pb_read(stream, (pb_byte_t*) bytes.get(), stream->bytes_left);
+  RsSystemState* state = static_cast<RsSystemState*>(*arg);
+
+  RsMemoryRegion newRegion;
+  newRegion.data = std::move(bytes);
+  state->regions.push_back(std::move(newRegion));
+
+  return true;  // success
+}
+
+static bool pb_memory_region_encode_cb(pb_ostream_t* stream,
+                                       const pb_field_t* field,
+                                       void * const *arg) {
+
+  ESP_LOGI(TAG, "Encoding memory region!");
+  if (!pb_encode_tag_for_field(stream, field)) {
+    return false;
+  }
+
+  RsMemoryRegion* region = static_cast<RsMemoryRegion*>(*arg);
+  return pb_encode_string(stream, region->data.get(), region->length);
+}
+
 static void convertApp(const App pbApp, RsApp* app) {
   app->id = pbApp.id;
   app->name = pbApp.name;
@@ -112,6 +112,40 @@ static void convertAppNano(const AppNano pbApp, RsAppNano* app) {
   app->release_year = pbApp.release_year;
   app->author = pbApp.author;
   app->model = fromPbModel(pbApp.ext_trs80.model);
+}
+
+// Called from nanopb to parse App of the response.
+static bool pb_App_callback(pb_istream_t* stream,
+                                  const pb_field_t* field,
+                                  void** arg) {
+  auto* apps = static_cast<std::vector<RsApp>*>(*arg);
+  App app;
+  if (!pb_decode(stream, App_fields, &app)) {
+    ESP_LOGE(TAG, "Failed to decode App");
+    return false;
+  }
+
+  RsApp rsApp;
+  convertApp(app, &rsApp);
+  apps->push_back(rsApp);
+  return true;
+}
+
+// Called from nanopb to parse AppNano of the response.
+static bool pb_AppNano_callback(pb_istream_t* stream,
+                                  const pb_field_t* field,
+                                  void** arg) {
+  auto* apps = static_cast<std::vector<RsAppNano>*>(*arg);
+  AppNano app;
+  if (!pb_decode(stream, AppNano_fields, &app)) {
+    ESP_LOGE(TAG, "Failed to decode AppNano");
+    return false;
+  }
+
+  RsAppNano appNano;
+  convertAppNano(app, &appNano);
+  apps->push_back(appNano);
+  return true;
 }
 
 }
@@ -157,7 +191,10 @@ bool RetroStore::FetchApp(const std::string& appId, RsApp* app) {
   }
 
   // Parse the response.
+  std::vector<RsApp> apps;
   ApiResponseApps resp = ApiResponseApps_init_zero;
+  resp.app.arg = &apps;
+  resp.app.funcs.decode = &pb_App_callback;
   pb_istream_t stream_in = pb_istream_from_buffer(recv_buffer.data, recv_buffer.len);
   if (!pb_decode(&stream_in, ApiResponseApps_fields, &resp)) {
       ESP_LOGE(TAG, "Decoding failed: %s", PB_GET_ERROR(&stream_in));
@@ -169,12 +206,11 @@ bool RetroStore::FetchApp(const std::string& appId, RsApp* app) {
     ESP_LOGW(TAG, "Bad request. Server responded: %s", resp.message);
     return false;
   }
-  if (resp.app_count != 1) {
-    ESP_LOGE(TAG, "Exactly one app expected, but got: %d", resp.app_count);
+  if (apps.size() != 1) {
+    ESP_LOGE(TAG, "Exactly one app expected, but got: %d", apps.size());
     return false;
   }
-
-  convertApp(resp.app[0], app);
+  *app = apps[0];
   return true;
 }
 
@@ -183,14 +219,6 @@ bool RetroStore::FetchApps(int start, int num, std::vector<RsApp>* apps) {
 }
 
 bool RetroStore::FetchApps(int start, int num, const std::string& query, std::vector<RsApp>* apps) {
-  // See ApiProtos.options.
-  ApiResponseApps zero = ApiResponseApps_init_zero;
-  const auto max_apps_supported = ARRAY_SIZE(zero.app);
-  if (num > max_apps_supported) {
-    ESP_LOGE(TAG, "Cannot fetch more than %d apps.", max_apps_supported);
-    return false;
-  }
-
   ListAppsParams params = ListAppsParams_init_zero;
   params.start = start;
   params.num = num;
@@ -222,6 +250,8 @@ bool RetroStore::FetchApps(int start, int num, const std::string& query, std::ve
 
   // Parse the response.
   ApiResponseApps resp = ApiResponseApps_init_zero;
+  resp.app.arg = apps;
+  resp.app.funcs.decode = &pb_App_callback;
   pb_istream_t stream_in = pb_istream_from_buffer(recv_buffer.data, recv_buffer.len);
   if (!pb_decode(&stream_in, ApiResponseApps_fields, &resp)) {
       ESP_LOGE(TAG, "Decoding failed: %s", PB_GET_ERROR(&stream_in));
@@ -233,41 +263,15 @@ bool RetroStore::FetchApps(int start, int num, const std::string& query, std::ve
     ESP_LOGW(TAG, "Bad request. Server responded: %s", resp.message);
     return false;
   }
-  if (resp.app_count > num) {
-    ESP_LOGE(TAG, "Max %d apps expected, but got: %d", num, resp.app_count);
+  if (apps->size() > num) {
+    ESP_LOGE(TAG, "Max %d apps expected, but got: %d", num, apps->size());
     return false;
   }
-
-  for (int i = 0; i < resp.app_count; ++i) {
-    RsApp app;
-    convertApp(resp.app[i], &app);
-    apps->push_back(app);
-  }
-
   return true;
 }
 
 bool RetroStore::FetchAppsNano(int start, int num, std::vector<RsAppNano>* apps) {
   return FetchAppsNano(start, num, "", apps);
-}
-
-
-// Called from nanopb to parse components of the message.
-static bool pb_AppNano_callback(pb_istream_t* stream,
-                                  const pb_field_t* field,
-                                  void** arg) {
-  auto* apps = static_cast<std::vector<RsAppNano>*>(*arg);
-  AppNano app;
-  if (!pb_decode(stream, AppNano_fields, &app)) {
-    ESP_LOGE(TAG, "Failed to decode AppNano");
-    return false;
-  }
-
-
-  RsAppNano appNano;
-  convertAppNano(app, &appNano);
-  apps->push_back(appNano);
-  return true;
 }
 
 bool RetroStore::FetchAppsNano(int start, int num, const std::string& query, std::vector<RsAppNano>* apps) {
