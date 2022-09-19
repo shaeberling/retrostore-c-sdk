@@ -29,6 +29,7 @@ const string PATH_UPLOAD_STATE = "/api/uploadState";
 const string PATH_DOWNLOAD_STATE = "/api/downloadState";
 const string PATH_GET_APP = "/api/getApp";
 const string PATH_FETCH_APPS = "/api/listApps";
+const string PATH_FETCH_APPS_NANO = "/api/listAppsNano";
 const string PATH_FETCH_MEDIA_IMAGES = "/api/fetchMediaImages";
 
 static bool pb_memory_region_decode_cb(pb_istream_t* stream,
@@ -102,6 +103,15 @@ static void convertApp(const App pbApp, RsApp* app) {
   for (int i = 0; i < pbApp.screenshot_url_count; ++i) {
     app->screenshot_urls.push_back(std::string(pbApp.screenshot_url[i]));
   }
+}
+
+static void convertAppNano(const AppNano pbApp, RsAppNano* app) {
+  app->id = pbApp.id;
+  app->name = pbApp.name;
+  app->version = pbApp.version;
+  app->release_year = pbApp.release_year;
+  app->author = pbApp.author;
+  app->model = fromPbModel(pbApp.ext_trs80.model);
 }
 
 }
@@ -232,6 +242,83 @@ bool RetroStore::FetchApps(int start, int num, const std::string& query, std::ve
     RsApp app;
     convertApp(resp.app[i], &app);
     apps->push_back(app);
+  }
+
+  return true;
+}
+
+bool RetroStore::FetchAppsNano(int start, int num, std::vector<RsAppNano>* apps) {
+  return FetchAppsNano(start, num, "", apps);
+}
+
+
+// Called from nanopb to parse components of the message.
+static bool pb_AppNano_callback(pb_istream_t* stream,
+                                  const pb_field_t* field,
+                                  void** arg) {
+  auto* apps = static_cast<std::vector<RsAppNano>*>(*arg);
+  AppNano app;
+  if (!pb_decode(stream, AppNano_fields, &app)) {
+    ESP_LOGE(TAG, "Failed to decode AppNano");
+    return false;
+  }
+
+
+  RsAppNano appNano;
+  convertAppNano(app, &appNano);
+  apps->push_back(appNano);
+  return true;
+}
+
+bool RetroStore::FetchAppsNano(int start, int num, const std::string& query, std::vector<RsAppNano>* apps) {
+  ListAppsParams params = ListAppsParams_init_zero;
+  params.start = start;
+  params.num = num;
+  if (!query.empty()) {
+    strcpy(params.query, query.c_str());
+  }
+
+  // Create buffer for params.
+  RsData buffer(200);
+  pb_ostream_t stream_param = pb_ostream_from_buffer(buffer.data, buffer.len);
+  // Encode the object to the buffer stream above.
+  if (!pb_encode(&stream_param, ListAppsParams_fields, &params)) {
+      ESP_LOGE(TAG, "Encoding params failed: %s", PB_GET_ERROR(&stream_param));
+      return false;
+  }
+  buffer.len = stream_param.bytes_written;
+  ESP_LOGI(TAG, "ListAppsParams created. Size: %d", buffer.len);
+
+  RsData recv_buffer;
+  bool success = data_fetcher_->Fetch(PATH_FETCH_APPS_NANO, buffer, &recv_buffer);
+  if (!success) {
+    ESP_LOGE(TAG, "Error fetching data");
+    return false;
+  }
+  ESP_LOGI(TAG, "Received %d bytes response.", recv_buffer.len);
+  if (recv_buffer.len == 0) {
+    return false;
+  }
+
+  // Parse the response.
+  ApiResponseAppsNano resp = ApiResponseAppsNano_init_zero;
+  resp.app.arg = apps;
+  resp.app.funcs.decode = &pb_AppNano_callback;
+  pb_istream_t stream_in = pb_istream_from_buffer(recv_buffer.data, recv_buffer.len);
+  if (!pb_decode(&stream_in, ApiResponseAppsNano_fields, &resp)) {
+      ESP_LOGE(TAG, "Decoding failed: %s", PB_GET_ERROR(&stream_in));
+      return false;
+  }
+  ESP_LOGI(TAG, "ApiResponseApps decoded successfully.");
+
+  if (!resp.success) {
+    ESP_LOGW(TAG, "Bad request. Server responded: %s", resp.message);
+    return false;
+  }
+
+  if (apps->size() > num) {
+    ESP_LOGE(TAG, "Max %d apps expected, but got: %d", num, apps->size());
+    return false;
   }
 
   return true;

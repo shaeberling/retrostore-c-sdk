@@ -58,6 +58,18 @@ typedef struct {
   RsTrs80Model model;
 } RsApp;
 
+// Nano version does not have description or screenshot URLs,
+// which would take up a lot of memory for an embedded system.
+typedef struct {
+  std::string id;
+  std::string name;
+  std::string version;
+  int release_year;
+  std::string author;
+  RsTrs80Model model;
+} RsAppNano;
+
+
 // API to communicate with the RetroStore server.
 class RetroStore
 {
@@ -74,6 +86,10 @@ class RetroStore
     bool FetchApps(int start, int num, std::vector<RsApp>* apps);
     // Query apps based on a search term.
     bool FetchApps(int start, int num, const std::string& query, std::vector<RsApp>* apps);
+    // Fetch metadata of retrostore apps from catalog (Nanot API uses less memory)
+    bool FetchAppsNano(int start, int num, std::vector<RsAppNano>* apps);
+    // Query apps based on a search term.
+    bool FetchAppsNano(int start, int num, const std::string& query, std::vector<RsAppNano>* apps);
     // Fetch media images for the app with the given ID.
     bool FetchMediaImages(const std::string& appId);
     // Upload system state and return the token. Token is -1 on error.
