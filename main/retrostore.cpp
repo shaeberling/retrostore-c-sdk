@@ -62,6 +62,38 @@ static Trs80Model toPbModel(RsTrs80Model model) {
   return Trs80Model_UNKNOWN_MODEL;
 }
 
+static RsMediaType fromPbMediaType(MediaType type) {
+  switch (type) {
+    case MediaType_UNKNOWN:
+      return RsMediaType_UNKNOWN;
+    case MediaType_DISK:
+      return RsMediaType_DISK;
+    case MediaType_CASSETTE:
+      return RsMediaType_CASSETTE;
+    case MediaType_COMMAND:
+      return RsMediaType_COMMAND;
+    case MediaType_BASIC:
+      return RsMediaType_BASIC;
+  }
+  return RsMediaType_UNKNOWN;
+}
+
+static MediaType toPbMediaType(RsMediaType type) {
+  switch (type) {
+    case RsMediaType_UNKNOWN:
+      return MediaType_UNKNOWN;
+    case RsMediaType_DISK:
+      return MediaType_DISK;
+    case RsMediaType_CASSETTE:
+      return MediaType_CASSETTE;
+    case RsMediaType_COMMAND:
+      return MediaType_COMMAND;
+    case RsMediaType_BASIC:
+      return MediaType_BASIC;
+  }
+  return MediaType_UNKNOWN;
+}
+
 static bool pb_memory_region_decode_cb(pb_istream_t* stream,
                                        const pb_field_t* field,
                                        void** arg) {
@@ -145,6 +177,49 @@ static bool pb_AppNano_callback(pb_istream_t* stream,
   RsAppNano appNano;
   convertAppNano(app, &appNano);
   apps->push_back(appNano);
+  return true;
+}
+
+static bool pb_MediaImageData_callback(pb_istream_t* stream,
+                                       const pb_field_t* field,
+                                       void** arg) {
+  auto* image = static_cast<RsMediaImage*>(*arg);
+  image->data_size = stream->bytes_left;
+
+  std::unique_ptr<uint8_t> bytes(static_cast<uint8_t*>(malloc(sizeof(pb_byte_t) * stream->bytes_left)));
+  auto success = pb_read(stream, (pb_byte_t*) bytes.get(), stream->bytes_left);
+  if (!success) {
+    ESP_LOGE(TAG, "Error while reading media image bytes.");
+    return false;
+  }
+
+  image->data = std::move(bytes);
+  return true;
+}
+
+// Called from nanopb to parse AppNano of the response.
+static bool pb_MediaImage_callback(pb_istream_t* stream,
+                                   const pb_field_t* field,
+                                   void** arg) {
+  RsMediaImage rsImage;
+  MediaImage image;
+
+  image.data.arg = &rsImage;
+  image.data.funcs.decode = &pb_MediaImageData_callback;
+
+  if (!pb_decode(stream, MediaImage_fields, &image)) {
+    ESP_LOGE(TAG, "Failed to decode MediaImage");
+    return false;
+  }
+
+  // TODO: Decode data
+  rsImage.type = fromPbMediaType(image.type);
+  rsImage.uploadTime = image.uploadTime;
+  rsImage.filename = image.filename;
+
+
+  auto* images = static_cast<std::vector<RsMediaImage>*>(*arg);
+  images->push_back(std::move(rsImage));
   return true;
 }
 
@@ -328,9 +403,16 @@ bool RetroStore::FetchAppsNano(int start, int num, const std::string& query, std
   return true;
 }
 
-bool RetroStore::FetchMediaImages(const string& appId) {
+bool RetroStore::FetchMediaImages(const string& appId,
+                                  const std::vector<RsMediaType> types,
+                                  std::vector<RsMediaImage>* images) {
   FetchMediaImagesParams params = FetchMediaImagesParams_init_zero;
   strcpy(params.app_id, appId.c_str());
+
+  for (int i = 0; i < types.size(); ++i) {
+    params.media_type[i] = toPbMediaType(types[i]);
+  }
+  params.media_type_count = types.size();
 
   RsData buffer(64);
   pb_ostream_t stream_param = pb_ostream_from_buffer(buffer.data, buffer.len);
@@ -354,6 +436,10 @@ bool RetroStore::FetchMediaImages(const string& appId) {
   }
 
   ApiResponseMediaImages resp = ApiResponseMediaImages_init_zero;
+
+  resp.mediaImage.arg = images;
+  resp.mediaImage.funcs.decode = &pb_MediaImage_callback;
+
   pb_istream_t stream_in = pb_istream_from_buffer(recv_buffer.data, recv_buffer.len);
   if (!pb_decode(&stream_in, ApiResponseMediaImages_fields, &resp)) {
       ESP_LOGE(TAG, "Decoding failed: %s", PB_GET_ERROR(&stream_in));
@@ -365,9 +451,6 @@ bool RetroStore::FetchMediaImages(const string& appId) {
     ESP_LOGW(TAG, "Bad request. Server responded: %s", resp.message);
     return false;
   }
-
-  // FIXME: Complete if we have enough RAM.
-
   return true;
 }
 

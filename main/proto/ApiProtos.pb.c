@@ -12,7 +12,7 @@ PB_BIND(ApiResponseApps, ApiResponseApps, AUTO)
 PB_BIND(ApiResponseAppsNano, ApiResponseAppsNano, AUTO)
 
 
-PB_BIND(ApiResponseMediaImages, ApiResponseMediaImages, 2)
+PB_BIND(ApiResponseMediaImages, ApiResponseMediaImages, AUTO)
 
 
 PB_BIND(ApiResponseDownloadSystemState, ApiResponseDownloadSystemState, 2)

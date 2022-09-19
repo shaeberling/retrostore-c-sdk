@@ -9,13 +9,21 @@
 
 namespace retrostore {
 
-typedef enum  {
+typedef enum {
     RsTrs80Model_UNKNOWN_MODEL = 0,
     RsTrs80Model_MODEL_I = 1,
     RsTrs80Model_MODEL_III = 2,
     RsTrs80Model_MODEL_4 = 3,
     RsTrs80Model_MODEL_4P = 4
 } RsTrs80Model;
+
+typedef enum {
+    RsMediaType_UNKNOWN = 0,
+    RsMediaType_DISK = 1,
+    RsMediaType_CASSETTE = 2,
+    RsMediaType_COMMAND = 3,
+    RsMediaType_BASIC = 4,
+} RsMediaType;
 
 typedef struct {
   int ix = 0;
@@ -52,7 +60,7 @@ typedef struct {
   std::string name;
   std::string version;
   std::string description;
-  int release_year;
+  int release_year = 0;
   std::vector<std::string> screenshot_urls;
   std::string author;
   RsTrs80Model model;
@@ -64,10 +72,18 @@ typedef struct {
   std::string id;
   std::string name;
   std::string version;
-  int release_year;
+  int release_year = 0;
   std::string author;
   RsTrs80Model model;
 } RsAppNano;
+
+typedef struct {
+  RsMediaType type;
+  std::string filename;
+  std::unique_ptr<uint8_t> data;
+  int data_size = 0;
+  int64_t uploadTime = 0;
+} RsMediaImage;
 
 
 // API to communicate with the RetroStore server.
@@ -91,7 +107,9 @@ class RetroStore
     // Query apps based on a search term.
     bool FetchAppsNano(int start, int num, const std::string& query, std::vector<RsAppNano>* apps);
     // Fetch media images for the app with the given ID.
-    bool FetchMediaImages(const std::string& appId);
+    bool FetchMediaImages(const std::string& appId,
+                          const std::vector<RsMediaType> types,
+                          std::vector<RsMediaImage>* images);
     // Upload system state and return the token. Token is -1 on error.
     int UploadState(RsSystemState& state);
     // Download system state
