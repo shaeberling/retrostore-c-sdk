@@ -23,6 +23,8 @@ namespace retrostore {
 using std::string;
 
 namespace {
+int opt_description_max_length = 1024;
+
 // TODO: Secure, HTTPS(443). Use WiFiClientSecure.
 const int DEFAULT_PORT = 80;
 const string PATH_UPLOAD_STATE = "/api/uploadState";
@@ -126,8 +128,7 @@ static void convertApp(const App pbApp, RsApp* app) {
   app->id = pbApp.id;
   app->name = pbApp.name;
   app->version = pbApp.version;
-  app->description = pbApp.description;
-  ESP_LOGI(TAG, "Description length: %d", strlen(pbApp.description));
+  ESP_LOGI(TAG, "Description length: %d", app->description.length());
   app->release_year = pbApp.release_year;
   app->author = pbApp.author;
   app->model = fromPbModel(pbApp.ext_trs80.model);
@@ -146,19 +147,50 @@ static void convertAppNano(const AppNano pbApp, RsAppNano* app) {
   app->model = fromPbModel(pbApp.ext_trs80.model);
 }
 
+// Called from nanopb to parse the app description of the response.
+static bool pb_App_Description_callback(pb_istream_t* stream,
+                                  const pb_field_t* field,
+                                  void** arg) {
+  auto* rsApp = static_cast<RsApp*>(*arg);
+
+  // We have already read our portion of the string. Discard the rest.
+  if (rsApp->description.length() > 0) {
+    uint8_t buffer[stream->bytes_left] = {0};
+    return pb_read(stream, buffer, stream->bytes_left);
+  }
+
+  // Max length is the one we set to, but actual string might be shorter.
+  int str_length = opt_description_max_length;
+  if (stream->bytes_left < opt_description_max_length) {
+    str_length = stream->bytes_left;
+  }
+
+  uint8_t buffer[str_length] = {0};
+  if (!pb_read(stream, buffer, str_length))
+      return false;
+  
+  rsApp->description = std::string((char*)buffer, str_length);
+  return true;
+}
+
 // Called from nanopb to parse App of the response.
 static bool pb_App_callback(pb_istream_t* stream,
                                   const pb_field_t* field,
                                   void** arg) {
-  auto* apps = static_cast<std::vector<RsApp>*>(*arg);
+  RsApp rsApp;
   App app;
+
+  app.description.arg = &rsApp;
+  app.description.funcs.decode = &pb_App_Description_callback;
+
   if (!pb_decode(stream, App_fields, &app)) {
     ESP_LOGE(TAG, "Failed to decode App");
     return false;
   }
 
-  RsApp rsApp;
   convertApp(app, &rsApp);
+
+  auto* apps = static_cast<std::vector<RsApp>*>(*arg);
   apps->push_back(rsApp);
   return true;
 }
@@ -235,6 +267,10 @@ RetroStore::RetroStore(DataFetcherEsp* data_fetcher)
 
 void RetroStore::PrintVersion() {
   ESP_LOGI(TAG, "RetroStore[ESP] SDK version 2022-11-06");
+}
+
+void RetroStore::SetMaxDescriptionLength(int length) {
+  opt_description_max_length = length;
 }
 
 bool RetroStore::FetchApp(const std::string& appId, RsApp* app) {

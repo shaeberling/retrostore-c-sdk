@@ -143,7 +143,7 @@ typedef struct _App {
     /* The human readable version of this app. */
     char version[24];
     /* The description of this app. */
-    char description[400];
+    pb_callback_t description;
     /* The original release year of the app. */
     int32_t release_year;
     /* URLs to screenshots for this app. */
@@ -227,7 +227,7 @@ extern "C" {
 #define ApiResponseMediaImages_init_default      {0, "", {{NULL}, NULL}}
 #define ApiResponseDownloadSystemState_init_default {0, "", false, SystemState_init_default}
 #define ApiResponseUploadSystemState_init_default {0, "", 0}
-#define App_init_default                         {"", "", "", "", 0, 0, {"", "", "", "", ""}, "", false, Trs80Extension_init_default}
+#define App_init_default                         {"", "", "", {{NULL}, NULL}, 0, 0, {"", "", "", "", ""}, "", false, Trs80Extension_init_default}
 #define AppNano_init_default                     {"", "", "", 0, "", false, Trs80Extension_init_default}
 #define Trs80Extension_init_default              {_Trs80Model_MIN}
 #define MediaImage_init_default                  {_MediaType_MIN, "", {{NULL}, NULL}, 0, ""}
@@ -245,7 +245,7 @@ extern "C" {
 #define ApiResponseMediaImages_init_zero         {0, "", {{NULL}, NULL}}
 #define ApiResponseDownloadSystemState_init_zero {0, "", false, SystemState_init_zero}
 #define ApiResponseUploadSystemState_init_zero   {0, "", 0}
-#define App_init_zero                            {"", "", "", "", 0, 0, {"", "", "", "", ""}, "", false, Trs80Extension_init_zero}
+#define App_init_zero                            {"", "", "", {{NULL}, NULL}, 0, 0, {"", "", "", "", ""}, "", false, Trs80Extension_init_zero}
 #define AppNano_init_zero                        {"", "", "", 0, "", false, Trs80Extension_init_zero}
 #define Trs80Extension_init_zero                 {_Trs80Model_MIN}
 #define MediaImage_init_zero                     {_MediaType_MIN, "", {{NULL}, NULL}, 0, ""}
@@ -371,12 +371,12 @@ X(a, STATIC,   SINGULAR, INT64,    token,             3)
 X(a, STATIC,   SINGULAR, STRING,   id,                1) \
 X(a, STATIC,   SINGULAR, STRING,   name,              2) \
 X(a, STATIC,   SINGULAR, STRING,   version,           3) \
-X(a, STATIC,   SINGULAR, STRING,   description,       4) \
+X(a, CALLBACK, SINGULAR, STRING,   description,       4) \
 X(a, STATIC,   SINGULAR, INT32,    release_year,      5) \
 X(a, STATIC,   REPEATED, STRING,   screenshot_url,    6) \
 X(a, STATIC,   SINGULAR, STRING,   author,            7) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  ext_trs80,         8)
-#define App_CALLBACK NULL
+#define App_CALLBACK pb_default_field_callback
 #define App_DEFAULT NULL
 #define App_ext_trs80_MSGTYPE Trs80Extension
 
@@ -520,13 +520,13 @@ extern const pb_msgdesc_t DownloadSystemStateParams_msg;
 /* ApiResponseAppsNano_size depends on runtime parameters */
 /* ApiResponseMediaImages_size depends on runtime parameters */
 /* ApiResponseDownloadSystemState_size depends on runtime parameters */
+/* App_size depends on runtime parameters */
 /* MediaImage_size depends on runtime parameters */
 /* SystemState_size depends on runtime parameters */
 /* SystemState_MemoryRegion_size depends on runtime parameters */
 /* UploadSystemStateParams_size depends on runtime parameters */
 #define ApiResponseUploadSystemState_size        94
 #define AppNano_size                             211
-#define App_size                                 1373
 #define DownloadSystemStateParams_size           11
 #define FetchMediaImagesParams_size              51
 #define GetAppParams_size                        41

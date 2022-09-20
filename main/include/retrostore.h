@@ -96,6 +96,9 @@ class RetroStore
     RetroStore(DataFetcherEsp* data_fetcher);
     // Print version of the library.
     void PrintVersion();
+    // Change the max number of characters to fetch for the description.
+    void SetMaxDescriptionLength(int length);
+
     // Fetches data about a single app with the given ID.
     bool FetchApp(const std::string& appId, RsApp* app);
     // Fetch metadata of retrostore apps from catalog.
