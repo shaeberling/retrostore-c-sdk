@@ -346,16 +346,26 @@ bool RetroStore::FetchApps(int start, int num, const std::string& query, std::ve
 }
 
 bool RetroStore::FetchAppsNano(int start, int num, std::vector<RsAppNano>* apps) {
-  return FetchAppsNano(start, num, "", apps);
+  std::vector<RsMediaType> hasType;  // empty
+  return FetchAppsNano(start, num, "", hasType, apps);
 }
 
-bool RetroStore::FetchAppsNano(int start, int num, const std::string& query, std::vector<RsAppNano>* apps) {
+bool RetroStore::FetchAppsNano(int start, int num,
+                               const std::string& query,
+                               const std::vector<RsMediaType> hasTypes,
+                               std::vector<RsAppNano>* apps) {
   ListAppsParams params = ListAppsParams_init_zero;
   params.start = start;
   params.num = num;
   if (!query.empty()) {
     strcpy(params.query, query.c_str());
   }
+
+  for (int i = 0; i < hasTypes.size(); ++i) {
+    params.trs80.media_types[i] = toPbMediaType(hasTypes[i]);
+  }
+  params.has_trs80 = true;
+  params.trs80.media_types_count = hasTypes.size();
 
   // Create buffer for params.
   RsData buffer(200);

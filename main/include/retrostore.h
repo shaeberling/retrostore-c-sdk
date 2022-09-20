@@ -105,7 +105,10 @@ class RetroStore
     // Fetch metadata of retrostore apps from catalog (Nanot API uses less memory)
     bool FetchAppsNano(int start, int num, std::vector<RsAppNano>* apps);
     // Query apps based on a search term.
-    bool FetchAppsNano(int start, int num, const std::string& query, std::vector<RsAppNano>* apps);
+    bool FetchAppsNano(int start, int num,
+                       const std::string& query,
+                       const std::vector<RsMediaType> hasTypes,
+                       std::vector<RsAppNano>* apps);
     // Fetch media images for the app with the given ID.
     bool FetchMediaImages(const std::string& appId,
                           const std::vector<RsMediaType> types,
