@@ -85,7 +85,6 @@ typedef struct {
   int64_t uploadTime = 0;
 } RsMediaImage;
 
-
 // API to communicate with the RetroStore server.
 class RetroStore
 {
@@ -118,8 +117,10 @@ class RetroStore
                           std::vector<RsMediaImage>* images);
     // Upload system state and return the token. Token is -1 on error.
     int UploadState(RsSystemState& state);
-    // Download system state
+    // Download system state with the given token.
     bool DownloadState(int token, RsSystemState* state);
+    // Download a custom memory region for the state with the given token.
+    bool DownloadStateMemoryRange(int token, int start, int length, RsMemoryRegion* region);
   private:
     const DataFetcherEsp* data_fetcher_;
 };

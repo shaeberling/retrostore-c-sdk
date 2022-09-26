@@ -29,6 +29,7 @@ int opt_description_max_length = 1024;
 const int DEFAULT_PORT = 80;
 const string PATH_UPLOAD_STATE = "/api/uploadState";
 const string PATH_DOWNLOAD_STATE = "/api/downloadState";
+const string PATH_DOWNLOAD_STATE_MEMORY_REGION = "/api/downloadStateMemoryRegion";
 const string PATH_GET_APP = "/api/getApp";
 const string PATH_FETCH_APPS = "/api/listApps";
 const string PATH_FETCH_APPS_NANO = "/api/listAppsNano";
@@ -661,6 +662,46 @@ bool RetroStore::DownloadState(int token, RsSystemState* state) {
     // not be called and we won't have enough regions in the vector and this
     // will therefore crash. Best to not send empty regions down.
   }
+  return true;
+}
+
+bool RetroStore::DownloadStateMemoryRange(int token, int start, int length, RsMemoryRegion* region) {
+  // Create params object and set token.
+  DownloadSystemStateMemoryRegionParams params = DownloadSystemStateMemoryRegionParams_init_zero;
+  params.token = token;
+  params.start = start;
+  params.length = length;
+
+  // Create buffer for params.
+  RsData buffer(128);
+
+  pb_ostream_t stream_param = pb_ostream_from_buffer(buffer.data, buffer.len);
+  // Encode the object to the buffer stream above.
+  if (!pb_encode(&stream_param, DownloadSystemStateMemoryRegionParams_fields, &params)) {
+      ESP_LOGE(TAG, "Encoding failed: %s", PB_GET_ERROR(&stream_param));
+      return false;
+  }
+  buffer.len = stream_param.bytes_written;
+  ESP_LOGI(TAG, "DownloadSystemStateMemoryRegionParams created. Size: %d", buffer.len);
+
+  RsData recv_buffer(false  /* delete_on_destruct */);
+  bool success = data_fetcher_->Fetch(PATH_DOWNLOAD_STATE_MEMORY_REGION, buffer, &recv_buffer);
+  if (!success) {
+    ESP_LOGE(TAG, "Error fetching data");
+    return false;
+  }
+  ESP_LOGI(TAG, "Received %d bytes response.", recv_buffer.len);
+  if (recv_buffer.len == 0) {
+    return false;
+  }
+
+  // Note: We set RsData above to NOT destroy the data on destruction so we can just
+  //       assign it here without a copy.
+  std::unique_ptr<uint8_t> data(recv_buffer.data);
+  region->data = std::move(data);
+  region->start = start;
+  region->length = recv_buffer.len;
+
   return true;
 }
 

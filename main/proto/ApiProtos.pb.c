@@ -60,6 +60,9 @@ PB_BIND(UploadSystemStateParams, UploadSystemStateParams, 2)
 PB_BIND(DownloadSystemStateParams, DownloadSystemStateParams, AUTO)
 
 
+PB_BIND(DownloadSystemStateMemoryRegionParams, DownloadSystemStateMemoryRegionParams, AUTO)
+
+
 
 
 
