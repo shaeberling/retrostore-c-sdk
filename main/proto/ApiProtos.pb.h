@@ -75,7 +75,7 @@ typedef struct _DownloadSystemStateMemoryRegionParams {
 
 typedef struct _DownloadSystemStateParams { 
     int64_t token;
-    bool exclude_memory_regions;
+    bool exclude_memory_region_data;
 } DownloadSystemStateParams;
 
 /* API Params */
@@ -286,7 +286,7 @@ extern "C" {
 #define DownloadSystemStateMemoryRegionParams_start_tag 2
 #define DownloadSystemStateMemoryRegionParams_length_tag 3
 #define DownloadSystemStateParams_token_tag      1
-#define DownloadSystemStateParams_exclude_memory_regions_tag 2
+#define DownloadSystemStateParams_exclude_memory_region_data_tag 2
 #define FetchMediaImagesParams_app_id_tag        1
 #define FetchMediaImagesParams_media_type_tag    2
 #define GetAppParams_app_id_tag                  1
@@ -487,7 +487,7 @@ X(a, STATIC,   OPTIONAL, MESSAGE,  state,             1)
 
 #define DownloadSystemStateParams_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, INT64,    token,             1) \
-X(a, STATIC,   SINGULAR, BOOL,     exclude_memory_regions,   2)
+X(a, STATIC,   SINGULAR, BOOL,     exclude_memory_region_data,   2)
 #define DownloadSystemStateParams_CALLBACK NULL
 #define DownloadSystemStateParams_DEFAULT NULL
 

@@ -582,11 +582,11 @@ bool RetroStore::DownloadState(int token, RsSystemState* state) {
   return DownloadState(token, false, state);
 }
 
-bool RetroStore::DownloadState(int token, bool exclude_memory_regions, RsSystemState* state) {
+bool RetroStore::DownloadState(int token, bool exclude_memory_region_data, RsSystemState* state) {
   // Create params object and set token.
   DownloadSystemStateParams params = DownloadSystemStateParams_init_zero;
   params.token = token;
-  params.exclude_memory_regions = exclude_memory_regions;
+  params.exclude_memory_region_data = exclude_memory_region_data;
 
   // Create buffer for params.
   RsData buffer(128);

@@ -120,7 +120,7 @@ class RetroStore
     // Download system state with the given token.
     bool DownloadState(int token, RsSystemState* state);
     // Download system state with the given token.
-    bool DownloadState(int token, bool exclude_memory_regions, RsSystemState* state);
+    bool DownloadState(int token, bool exclude_memory_region_data, RsSystemState* state);
     // Download a custom memory region for the state with the given token.
     bool DownloadStateMemoryRange(int token, int start, int length, RsMemoryRegion* region);
   private:
