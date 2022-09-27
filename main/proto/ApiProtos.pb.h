@@ -195,8 +195,7 @@ typedef struct _SystemState {
     Trs80Model model;
     bool has_registers;
     SystemState_Registers registers;
-    pb_size_t memoryRegions_count;
-    SystemState_MemoryRegion memoryRegions[10];
+    pb_callback_t memoryRegions;
 } SystemState;
 
 typedef struct _ApiResponseDownloadSystemState { 
@@ -239,7 +238,7 @@ extern "C" {
 #define AppNano_init_default                     {"", "", "", 0, "", false, Trs80Extension_init_default}
 #define Trs80Extension_init_default              {_Trs80Model_MIN}
 #define MediaImage_init_default                  {_MediaType_MIN, "", {{NULL}, NULL}, 0, ""}
-#define SystemState_init_default                 {_Trs80Model_MIN, false, SystemState_Registers_init_default, 0, {SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default, SystemState_MemoryRegion_init_default}}
+#define SystemState_init_default                 {_Trs80Model_MIN, false, SystemState_Registers_init_default, {{NULL}, NULL}}
 #define SystemState_Registers_init_default       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define SystemState_MemoryRegion_init_default    {0, {{NULL}, NULL}, 0}
 #define FetchMediaImagesParams_init_default      {"", 0, {_MediaType_MIN, _MediaType_MIN, _MediaType_MIN, _MediaType_MIN, _MediaType_MIN}}
@@ -258,7 +257,7 @@ extern "C" {
 #define AppNano_init_zero                        {"", "", "", 0, "", false, Trs80Extension_init_zero}
 #define Trs80Extension_init_zero                 {_Trs80Model_MIN}
 #define MediaImage_init_zero                     {_MediaType_MIN, "", {{NULL}, NULL}, 0, ""}
-#define SystemState_init_zero                    {_Trs80Model_MIN, false, SystemState_Registers_init_zero, 0, {SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero, SystemState_MemoryRegion_init_zero}}
+#define SystemState_init_zero                    {_Trs80Model_MIN, false, SystemState_Registers_init_zero, {{NULL}, NULL}}
 #define SystemState_Registers_init_zero          {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define SystemState_MemoryRegion_init_zero       {0, {{NULL}, NULL}, 0}
 #define FetchMediaImagesParams_init_zero         {"", 0, {_MediaType_MIN, _MediaType_MIN, _MediaType_MIN, _MediaType_MIN, _MediaType_MIN}}
@@ -422,8 +421,8 @@ X(a, STATIC,   SINGULAR, STRING,   description,       5)
 #define SystemState_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    model,             1) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  registers,         2) \
-X(a, STATIC,   REPEATED, MESSAGE,  memoryRegions,     3)
-#define SystemState_CALLBACK NULL
+X(a, CALLBACK, REPEATED, MESSAGE,  memoryRegions,     3)
+#define SystemState_CALLBACK pb_default_field_callback
 #define SystemState_DEFAULT NULL
 #define SystemState_registers_MSGTYPE SystemState_Registers
 #define SystemState_memoryRegions_MSGTYPE SystemState_MemoryRegion

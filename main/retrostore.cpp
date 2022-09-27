@@ -97,32 +97,74 @@ static MediaType toPbMediaType(RsMediaType type) {
   return MediaType_UNKNOWN;
 }
 
-static bool pb_memory_region_decode_cb(pb_istream_t* stream,
+static bool pb_MemoryRegionData_decode_cb(pb_istream_t* stream,
                                        const pb_field_t* field,
                                        void** arg) {
-  // FIXME: This is not called when data is zero. Don't even send it from the server!
   std::unique_ptr<uint8_t> bytes(static_cast<uint8_t*>(malloc(sizeof(pb_byte_t) * stream->bytes_left)));
   pb_read(stream, (pb_byte_t*) bytes.get(), stream->bytes_left);
-  RsSystemState* state = static_cast<RsSystemState*>(*arg);
-
-  RsMemoryRegion newRegion;
-  newRegion.data = std::move(bytes);
-  state->regions.push_back(std::move(newRegion));
+  RsMemoryRegion* newRegion = static_cast<RsMemoryRegion*>(*arg);
+  newRegion->data = std::move(bytes);
 
   return true;  // success
 }
 
-static bool pb_memory_region_encode_cb(pb_ostream_t* stream,
+struct ConstMemRegionPtr {
+  const RsMemoryRegion* region;
+};
+
+static bool pb_MemoryRegionData_encode_cb(pb_ostream_t* stream,
                                        const pb_field_t* field,
                                        void * const *arg) {
-
-  ESP_LOGI(TAG, "Encoding memory region!");
   if (!pb_encode_tag_for_field(stream, field)) {
     return false;
   }
+  const auto* ptr = static_cast<struct ConstMemRegionPtr*>(*arg);
+  return pb_encode_string(stream, ptr->region->data.get(), ptr->region->length);
+}
 
-  RsMemoryRegion* region = static_cast<RsMemoryRegion*>(*arg);
-  return pb_encode_string(stream, region->data.get(), region->length);
+// Called from nanopb to parse App of the response.
+static bool pb_MemoryRegion_decode_cb(pb_istream_t* stream,
+                                     const pb_field_t* field,
+                                     void** arg) {
+  auto* state = static_cast<RsSystemState*>(*arg);
+  RsMemoryRegion rsRegion;
+
+  SystemState_MemoryRegion region = SystemState_MemoryRegion_init_zero;
+  region.data.funcs.decode = &pb_MemoryRegionData_decode_cb;
+  region.data.arg = &rsRegion;
+
+  if (!pb_decode(stream, SystemState_MemoryRegion_fields, &region)) {
+    ESP_LOGE(TAG, "Failed to decode MemoryRegion");
+    return false;
+  }
+
+  rsRegion.start = region.start;
+  rsRegion.length = region.length;
+  state->regions.push_back(std::move(rsRegion));
+  return true;
+}
+
+static bool pb_MemoryRegion_encode_cb(pb_ostream_t* stream,
+                                      const pb_field_t* field,
+                                      void * const *arg) {
+  const auto* rsRegions = static_cast<const std::vector<RsMemoryRegion>*>(*arg);
+  for (int i = 0; i < rsRegions->size(); ++i) {
+    if (!pb_encode_tag_for_field(stream, field)) {
+      return false;
+    }
+
+    SystemState_MemoryRegion region = SystemState_MemoryRegion_init_zero;
+    region.start = rsRegions->at(i).start;
+    region.length = rsRegions->at(i).length;
+    region.data.funcs.encode = &pb_MemoryRegionData_encode_cb;
+    struct ConstMemRegionPtr arg = {.region = &rsRegions->at(i)};
+    region.data.arg = &arg;
+
+    if (!pb_encode_submessage(stream, SystemState_MemoryRegion_fields, &region)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 static void convertApp(const App pbApp, RsApp* app) {
@@ -523,17 +565,8 @@ int RetroStore::UploadState(RsSystemState& state) {
   params.state.registers.r_1 = state.registers.r_1;
   params.state.registers.r_2 = state.registers.r_2;
 
-  if (state.regions.size() > ARRAY_SIZE(params.state.memoryRegions)) {
-    ESP_LOGE(TAG, "Too many memory regions. Increase in PB options.");
-    return -1;
-  }
-  params.state.memoryRegions_count = state.regions.size();
-  for (int i = 0; i < state.regions.size(); ++i) {
-    params.state.memoryRegions[i].start = state.regions[i].start;
-    params.state.memoryRegions[i].length = state.regions[i].length;
-    params.state.memoryRegions[i].data.funcs.encode = &pb_memory_region_encode_cb;
-    params.state.memoryRegions[i].data.arg = &state.regions[i];
-  }
+  params.state.memoryRegions.funcs.encode = &pb_MemoryRegion_encode_cb;
+  params.state.memoryRegions.arg = &state.regions;
 
   // Size of the params depends on the region size.
   int paramSize = 200;
@@ -613,11 +646,8 @@ bool RetroStore::DownloadState(int token, bool exclude_memory_region_data, RsSys
 
 
   ApiResponseDownloadSystemState stateResp = ApiResponseDownloadSystemState_init_zero;
-  auto num_mem_regions = sizeof(stateResp.systemState.memoryRegions)/sizeof(stateResp.systemState.memoryRegions[0]);
-  for (int i = 0; i < num_mem_regions; ++i) {
-    stateResp.systemState.memoryRegions[i].data.funcs.decode = &pb_memory_region_decode_cb;
-    stateResp.systemState.memoryRegions[i].data.arg = state;
-  }
+  stateResp.systemState.memoryRegions.funcs.decode = &pb_MemoryRegion_decode_cb;
+  stateResp.systemState.memoryRegions.arg = state;
 
   pb_istream_t stream_in = pb_istream_from_buffer(recv_buffer.data, recv_buffer.len);
   if (!pb_decode(&stream_in, ApiResponseDownloadSystemState_fields, &stateResp)) {
@@ -655,17 +685,6 @@ bool RetroStore::DownloadState(int token, bool exclude_memory_region_data, RsSys
   state->registers.r_1 = _state.registers.r_1;
   state->registers.r_2 = _state.registers.r_2;
 
-  // Load the memoriy regions, which are dynamic and potentially large in size.
-  for (int i = 0; i < _state.memoryRegions_count; ++i) {
-    ESP_LOGI(TAG, "Memory region[%d], Start(%d), Length(%d)",
-             i, _state.memoryRegions[i].start, _state.memoryRegions[i].length);
-    state->regions[i].start = _state.memoryRegions[i].start;
-    state->regions[i].length = _state.memoryRegions[i].length;
-    // Note: Data has already been read/decoded.
-    // FIXME: There is one issue: If data is of size 0 then the callback will
-    // not be called and we won't have enough regions in the vector and this
-    // will therefore crash. Best to not send empty regions down.
-  }
   return true;
 }
 

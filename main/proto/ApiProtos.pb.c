@@ -15,7 +15,7 @@ PB_BIND(ApiResponseAppsNano, ApiResponseAppsNano, AUTO)
 PB_BIND(ApiResponseMediaImages, ApiResponseMediaImages, AUTO)
 
 
-PB_BIND(ApiResponseDownloadSystemState, ApiResponseDownloadSystemState, 2)
+PB_BIND(ApiResponseDownloadSystemState, ApiResponseDownloadSystemState, AUTO)
 
 
 PB_BIND(ApiResponseUploadSystemState, ApiResponseUploadSystemState, AUTO)
@@ -33,7 +33,7 @@ PB_BIND(Trs80Extension, Trs80Extension, AUTO)
 PB_BIND(MediaImage, MediaImage, AUTO)
 
 
-PB_BIND(SystemState, SystemState, 2)
+PB_BIND(SystemState, SystemState, AUTO)
 
 
 PB_BIND(SystemState_Registers, SystemState_Registers, AUTO)
@@ -54,7 +54,7 @@ PB_BIND(ListAppsParams, ListAppsParams, AUTO)
 PB_BIND(ListAppsParams_Trs80Params, ListAppsParams_Trs80Params, AUTO)
 
 
-PB_BIND(UploadSystemStateParams, UploadSystemStateParams, 2)
+PB_BIND(UploadSystemStateParams, UploadSystemStateParams, AUTO)
 
 
 PB_BIND(DownloadSystemStateParams, DownloadSystemStateParams, AUTO)
