@@ -49,6 +49,12 @@ typedef struct _RsMemoryRegion {
   std::unique_ptr<uint8_t> data;
 } RsMemoryRegion;
 
+typedef struct _RsMediaRegion {
+  int start = 0;
+  int length = 0;
+  std::unique_ptr<uint8_t> data;
+} RsMediaRegion;
+
 typedef struct {
   RsTrs80Model model = RsTrs80Model_UNKNOWN_MODEL;
   RsSystemStateRegisters registers;
@@ -115,6 +121,17 @@ class RetroStore
     bool FetchMediaImages(const std::string& appId,
                           const std::vector<RsMediaType> types,
                           std::vector<RsMediaImage>* images);
+    // A version of FetchMediaImages that returns references to media images,
+    // but does not yet download it. Use FetchMediaImageRegion to fetch parts
+    // of the images. This method is useful is you do not have a lot of memory
+    // available and need to load the images piece by piece.
+    // NOTE: reference strings might not be stable, so don't store and use them
+    //       long-term.
+    bool FetchMediaImagesRefs(const std::string& appId,
+                              const std::vector<RsMediaType> types,
+                              std::vector<std::string>* imageRefs);
+    // Download parts of a media image.
+    bool FetchMediaImageRegion(const std::string& imageRef, int start, int length, RsMediaRegion* region)
     // Upload system state and return the token. Token is -1 on error.
     int UploadState(RsSystemState& state);
     // Download system state with the given token.
