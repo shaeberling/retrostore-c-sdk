@@ -91,6 +91,14 @@ typedef struct {
   int64_t uploadTime = 0;
 } RsMediaImage;
 
+typedef struct {
+  RsMediaType type;
+  std::string filename;
+  std::string token;
+  int data_size = 0;
+  int64_t uploadTime = 0;
+} RsMediaImageRef;
+
 // API to communicate with the RetroStore server.
 class RetroStore
 {
@@ -127,11 +135,11 @@ class RetroStore
     // available and need to load the images piece by piece.
     // NOTE: reference strings might not be stable, so don't store and use them
     //       long-term.
-    bool FetchMediaImagesRefs(const std::string& appId,
+    bool FetchMediaImageRefs(const std::string& appId,
                               const std::vector<RsMediaType> types,
-                              std::vector<std::string>* imageRefs);
+                              std::vector<RsMediaImageRef>* imageRefs);
     // Download parts of a media image.
-    bool FetchMediaImageRegion(const std::string& imageRef, int start, int length, RsMediaRegion* region)
+    bool FetchMediaImageRegion(const RsMediaImageRef& imageRef, int start, int length, RsMediaRegion* region);
     // Upload system state and return the token. Token is -1 on error.
     int UploadState(RsSystemState& state);
     // Download system state with the given token.

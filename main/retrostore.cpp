@@ -34,6 +34,8 @@ const string PATH_GET_APP = "/api/getApp";
 const string PATH_FETCH_APPS = "/api/listApps";
 const string PATH_FETCH_APPS_NANO = "/api/listAppsNano";
 const string PATH_FETCH_MEDIA_IMAGES = "/api/fetchMediaImages";
+const string PATH_FETCH_MEDIA_IMAGE_REFS = "/api/fetchMediaImageRefs";
+const string PATH_FETCH_MEDIA_IMAGE_REGION = "/api/fetchMediaImageRegion";
 
 static RsTrs80Model fromPbModel(Trs80Model pbModel) {
   switch (pbModel) {
@@ -211,7 +213,7 @@ static bool pb_App_Description_callback(pb_istream_t* stream,
   uint8_t buffer[str_length] = {0};
   if (!pb_read(stream, buffer, str_length))
       return false;
-  
+
   rsApp->description = std::string((char*)buffer, str_length);
   return true;
 }
@@ -272,7 +274,7 @@ static bool pb_MediaImageData_callback(pb_istream_t* stream,
   return true;
 }
 
-// Called from nanopb to parse AppNano of the response.
+// Called from nanopb to parse MediaImages of the response.
 static bool pb_MediaImage_callback(pb_istream_t* stream,
                                    const pb_field_t* field,
                                    void** arg) {
@@ -295,6 +297,29 @@ static bool pb_MediaImage_callback(pb_istream_t* stream,
 
   auto* images = static_cast<std::vector<RsMediaImage>*>(*arg);
   images->push_back(std::move(rsImage));
+  return true;
+}
+
+// Called from nanopb to parse MediaImageRefs of the response.
+static bool pb_MediaImageRef_callback(pb_istream_t* stream,
+                                   const pb_field_t* field,
+                                   void** arg) {
+  RsMediaImageRef rsImageRef;
+  MediaImageRef imageRef;
+
+  if (!pb_decode(stream, MediaImageRef_fields, &imageRef)) {
+    ESP_LOGE(TAG, "Failed to decode MediaImageRef");
+    return false;
+  }
+
+  rsImageRef.type = fromPbMediaType(imageRef.type);
+  rsImageRef.uploadTime = imageRef.uploadTime;
+  rsImageRef.filename = imageRef.filename;
+  rsImageRef.data_size = imageRef.size;
+  rsImageRef.token = imageRef.token;
+
+  auto* imageRefs = static_cast<std::vector<RsMediaImageRef>*>(*arg);
+  imageRefs->push_back(std::move(rsImageRef));
   return true;
 }
 
@@ -540,6 +565,64 @@ bool RetroStore::FetchMediaImages(const string& appId,
     ESP_LOGW(TAG, "Bad request. Server responded: %s", resp.message);
     return false;
   }
+  return true;
+}
+
+bool RetroStore::FetchMediaImageRefs(const std::string& appId,
+                                     const std::vector<RsMediaType> types,
+                                     std::vector<RsMediaImageRef>* imageRefs) {
+  FetchMediaImageRefsParams params = FetchMediaImageRefsParams_init_zero;
+  strcpy(params.app_id, appId.c_str());
+
+  for (int i = 0; i < types.size(); ++i) {
+    params.media_type[i] = toPbMediaType(types[i]);
+  }
+  params.media_type_count = types.size();
+
+  RsData buffer(64);
+  pb_ostream_t stream_param = pb_ostream_from_buffer(buffer.data, buffer.len);
+  // Encode the object to the buffer stream above.
+  if (!pb_encode(&stream_param, FetchMediaImagesParams_fields, &params)) {
+      ESP_LOGE(TAG, "Encoding params failed: %s", PB_GET_ERROR(&stream_param));
+      return false;
+  }
+  buffer.len = stream_param.bytes_written;
+  ESP_LOGI(TAG, "FetchMediaImagesParams created. Size: %d", buffer.len);
+
+  RsData recv_buffer;
+  bool success = data_fetcher_->Fetch(PATH_FETCH_MEDIA_IMAGE_REFS, buffer, &recv_buffer);
+  if (!success) {
+    ESP_LOGE(TAG, "Error fetching data");
+    return false;
+  }
+  ESP_LOGI(TAG, "Received %d bytes response.", recv_buffer.len);
+  if (recv_buffer.len == 0) {
+    return false;
+  }
+
+  ApiResponseMediaImageRefs resp = ApiResponseMediaImageRefs_init_zero;
+
+  resp.mediaImageRef.arg = imageRefs;
+  resp.mediaImageRef.funcs.decode = &pb_MediaImageRef_callback;
+
+  pb_istream_t stream_in = pb_istream_from_buffer(recv_buffer.data, recv_buffer.len);
+  if (!pb_decode(&stream_in, ApiResponseMediaImages_fields, &resp)) {
+      ESP_LOGE(TAG, "Decoding failed: %s", PB_GET_ERROR(&stream_in));
+      return false;
+  }
+  ESP_LOGI(TAG, "ApiResponseMediaImages decoded successfully.");
+
+  if (!resp.success) {
+    ESP_LOGW(TAG, "Bad request. Server responded: %s", resp.message);
+    return false;
+  }
+  return true;
+}
+
+bool RetroStore::FetchMediaImageRegion(const RsMediaImageRef& imageRef,
+                                       int start, int length,
+                                       RsMediaRegion* region) {
+  // TODO, continue here.
   return true;
 }
 
