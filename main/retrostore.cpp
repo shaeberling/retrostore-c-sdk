@@ -622,7 +622,42 @@ bool RetroStore::FetchMediaImageRefs(const std::string& appId,
 bool RetroStore::FetchMediaImageRegion(const RsMediaImageRef& imageRef,
                                        int start, int length,
                                        RsMediaRegion* region) {
-  // TODO, continue here.
+  // Create params object and set token.
+  FetchMediaImageRegionParams params = FetchMediaImageRegionParams_init_zero;
+  strcpy(params.token, imageRef.token.c_str());
+  params.start = start;
+  params.length = length;
+
+  // Create buffer for params.
+  RsData buffer(128);
+
+  pb_ostream_t stream_param = pb_ostream_from_buffer(buffer.data, buffer.len);
+  // Encode the object to the buffer stream above.
+  if (!pb_encode(&stream_param, FetchMediaImageRegionParams_fields, &params)) {
+      ESP_LOGE(TAG, "Encoding failed: %s", PB_GET_ERROR(&stream_param));
+      return false;
+  }
+  buffer.len = stream_param.bytes_written;
+  ESP_LOGI(TAG, "FetchMediaImageRegionParams created. Size: %d", buffer.len);
+
+  RsData recv_buffer(false  /* delete_on_destruct */);
+  bool success = data_fetcher_->Fetch(PATH_FETCH_MEDIA_IMAGE_REGION, buffer, &recv_buffer);
+  if (!success) {
+    ESP_LOGE(TAG, "Error fetching data");
+    return false;
+  }
+  ESP_LOGI(TAG, "Received %d bytes response.", recv_buffer.len);
+  if (recv_buffer.len == 0) {
+    return false;
+  }
+
+  // Note: We set RsData above to NOT destroy the data on destruction so we can just
+  //       assign it here without a copy.
+  std::unique_ptr<uint8_t> data(recv_buffer.data);
+  region->data = std::move(data);
+  region->start = start;
+  region->length = recv_buffer.len;
+
   return true;
 }
 

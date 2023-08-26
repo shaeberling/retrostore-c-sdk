@@ -152,7 +152,7 @@ typedef struct _FetchMediaImageRefsParams {
 } FetchMediaImageRefsParams;
 
 typedef struct _FetchMediaImageRegionParams {
-    pb_callback_t token;
+    char token[100];
     int32_t start;
     int32_t length;
 } FetchMediaImageRegionParams;
@@ -252,7 +252,7 @@ extern "C" {
 #define SystemState_MemoryRegion_init_default    {0, {{NULL}, NULL}, 0}
 #define FetchMediaImagesParams_init_default      {"", 0, {_MediaType_MIN, _MediaType_MIN, _MediaType_MIN, _MediaType_MIN, _MediaType_MIN}}
 #define FetchMediaImageRefsParams_init_default   {"", 0, {_MediaType_MIN, _MediaType_MIN, _MediaType_MIN, _MediaType_MIN, _MediaType_MIN}}
-#define FetchMediaImageRegionParams_init_default {{{NULL}, NULL}, 0, 0}
+#define FetchMediaImageRegionParams_init_default {"", 0, 0}
 #define GetAppParams_init_default                {""}
 #define ListAppsParams_init_default              {0, 0, "", false, ListAppsParams_Trs80Params_init_default}
 #define ListAppsParams_Trs80Params_init_default  {0, {_MediaType_MIN, _MediaType_MIN, _MediaType_MIN, _MediaType_MIN, _MediaType_MIN}}
@@ -275,7 +275,7 @@ extern "C" {
 #define SystemState_MemoryRegion_init_zero       {0, {{NULL}, NULL}, 0}
 #define FetchMediaImagesParams_init_zero         {"", 0, {_MediaType_MIN, _MediaType_MIN, _MediaType_MIN, _MediaType_MIN, _MediaType_MIN}}
 #define FetchMediaImageRefsParams_init_zero      {"", 0, {_MediaType_MIN, _MediaType_MIN, _MediaType_MIN, _MediaType_MIN, _MediaType_MIN}}
-#define FetchMediaImageRegionParams_init_zero    {{{NULL}, NULL}, 0, 0}
+#define FetchMediaImageRegionParams_init_zero    {"", 0, 0}
 #define GetAppParams_init_zero                   {""}
 #define ListAppsParams_init_zero                 {0, 0, "", false, ListAppsParams_Trs80Params_init_zero}
 #define ListAppsParams_Trs80Params_init_zero     {0, {_MediaType_MIN, _MediaType_MIN, _MediaType_MIN, _MediaType_MIN, _MediaType_MIN}}
@@ -513,10 +513,10 @@ X(a, STATIC,   REPEATED, UENUM,    media_type,        2)
 #define FetchMediaImageRefsParams_DEFAULT NULL
 
 #define FetchMediaImageRegionParams_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, STRING,   token,             1) \
+X(a, STATIC,   SINGULAR, STRING,   token,             1) \
 X(a, STATIC,   SINGULAR, INT32,    start,             2) \
 X(a, STATIC,   SINGULAR, INT32,    length,            3)
-#define FetchMediaImageRegionParams_CALLBACK pb_default_field_callback
+#define FetchMediaImageRegionParams_CALLBACK NULL
 #define FetchMediaImageRegionParams_DEFAULT NULL
 
 #define GetAppParams_FIELDLIST(X, a) \
@@ -616,13 +616,13 @@ extern const pb_msgdesc_t DownloadSystemStateMemoryRegionParams_msg;
 /* MediaImage_size depends on runtime parameters */
 /* SystemState_size depends on runtime parameters */
 /* SystemState_MemoryRegion_size depends on runtime parameters */
-/* FetchMediaImageRegionParams_size depends on runtime parameters */
 /* UploadSystemStateParams_size depends on runtime parameters */
 #define ApiResponseUploadSystemState_size        94
 #define AppNano_size                             211
 #define DownloadSystemStateMemoryRegionParams_size 33
 #define DownloadSystemStateParams_size           13
 #define FetchMediaImageRefsParams_size           51
+#define FetchMediaImageRegionParams_size         123
 #define FetchMediaImagesParams_size              51
 #define GetAppParams_size                        41
 #define ListAppsParams_Trs80Params_size          10
