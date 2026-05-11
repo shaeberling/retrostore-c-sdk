@@ -12,7 +12,7 @@ struct RsData {
   }
 
   RsData(int size) {
-    data = new u_int8_t[size];
+    data = new uint8_t[size];
     len = size;
   }
 
