@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stdlib.h>
+#include <esp_heap_caps.h>
+
 struct RsData {
   uint8_t* data;
   int len;
@@ -12,13 +15,19 @@ struct RsData {
   }
 
   RsData(int size) {
-    data = new uint8_t[size];
+    // Prefer PSRAM so HTTP-response buffers don't pile up in internal SRAM
+    // (where they would push Wi-Fi/BT coex working memory below the
+    // threshold and cause association timeouts on ESP32-S3). Falls back
+    // to any 8-bit-addressable RAM if PSRAM isn't available.
+    data = (uint8_t*) heap_caps_malloc_prefer(size, 2,
+                                              MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT,
+                                              MALLOC_CAP_8BIT);
     len = size;
   }
 
   ~RsData() {
-    if (delete_on_destruct) {
-      delete data;
+    if (delete_on_destruct && data) {
+      free(data);
     }
   }
 };

@@ -2,6 +2,7 @@
 
 #include <string>
 #include <esp_log.h>
+#include <esp_heap_caps.h>
 
 #include "common.h"
 #include "esp_http_client.h"
@@ -34,10 +35,17 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
               return ESP_FAIL;
             }
 
-            // Allocate the memory if not already done.
+            // Allocate the memory if not already done. Prefer PSRAM (most
+            // ESP32 SoCs that talk to RetroStore have it) and fall back
+            // to internal SRAM otherwise. Default malloc() would land in
+            // internal SRAM for sub-16KB allocations on typical IDF
+            // configs, putting pressure on the Wi-Fi/BT coex working set.
             if (incoming_buffer.len == 0) {
                 incoming_buffer.len = esp_http_client_get_content_length(evt->client);
-                incoming_buffer.data = (uint8_t *) malloc(incoming_buffer.len);
+                incoming_buffer.data = (uint8_t *) heap_caps_malloc_prefer(
+                    incoming_buffer.len, 2,
+                    MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT,
+                    MALLOC_CAP_8BIT);
                 ESP_LOGI(TAG, "Preparing buffer for %d bytes.", incoming_buffer.len);
                 received = 0;
                 if (incoming_buffer.data == NULL) {

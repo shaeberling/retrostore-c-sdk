@@ -6,11 +6,26 @@
 #include <string>
 
 #include "esp_log.h"
+#include "esp_heap_caps.h"
 
 #include "common.h"
 #include "proto/ApiProtos.pb.h"
 #include "proto/pb_decode.h"
 #include "proto/pb_encode.h"
+
+// Allocate `size` bytes preferring PSRAM, with a fallback to internal SRAM
+// only if PSRAM is unavailable. ESP-IDF's default malloc() rule
+// (CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=16384) sends sub-16-KB allocations
+// to internal SRAM, which is shared with Wi-Fi/BT coex working memory.
+// All of the SDK's HTTP-response and protobuf-decode buffers fit under
+// that threshold, so we ask for PSRAM explicitly. The buffers can be
+// free()d / deleted normally — ESP-IDF's heap is a unified caps-aware
+// allocator, free() figures out which pool the pointer came from.
+static inline void *rs_psram_malloc(size_t size) {
+  return heap_caps_malloc_prefer(size, 2,
+                                 MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT,
+                                 MALLOC_CAP_8BIT);
+}
 
 #define ARRAY_SIZE(arr)     (sizeof(arr) / sizeof((arr)[0]))
 
@@ -102,7 +117,7 @@ static MediaType toPbMediaType(RsMediaType type) {
 static bool pb_MemoryRegionData_decode_cb(pb_istream_t* stream,
                                        const pb_field_t* field,
                                        void** arg) {
-  std::unique_ptr<uint8_t> bytes(static_cast<uint8_t*>(malloc(sizeof(pb_byte_t) * stream->bytes_left)));
+  std::unique_ptr<uint8_t> bytes(static_cast<uint8_t*>(rs_psram_malloc(sizeof(pb_byte_t) * stream->bytes_left)));
   pb_read(stream, (pb_byte_t*) bytes.get(), stream->bytes_left);
   RsMemoryRegion* newRegion = static_cast<RsMemoryRegion*>(*arg);
   newRegion->data = std::move(bytes);
@@ -263,7 +278,7 @@ static bool pb_MediaImageData_callback(pb_istream_t* stream,
   auto* image = static_cast<RsMediaImage*>(*arg);
   image->data_size = stream->bytes_left;
 
-  std::unique_ptr<uint8_t> bytes(static_cast<uint8_t*>(malloc(sizeof(pb_byte_t) * stream->bytes_left)));
+  std::unique_ptr<uint8_t> bytes(static_cast<uint8_t*>(rs_psram_malloc(sizeof(pb_byte_t) * stream->bytes_left)));
   auto success = pb_read(stream, (pb_byte_t*) bytes.get(), stream->bytes_left);
   if (!success) {
     ESP_LOGE(TAG, "Error while reading media image bytes.");
